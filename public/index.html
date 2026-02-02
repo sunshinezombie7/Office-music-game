@@ -8,8 +8,8 @@
         /* --- RETRO SYNTHWAVE THEME --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
-            font-family: 'Courier New', Courier, monospace; /* Retro Font */
-            background: #120428; /* Deep Purple */
+            font-family: 'Courier New', Courier, monospace; 
+            background: #120428; 
             color: #fff; 
             padding: 20px; 
             text-align: center; 
@@ -17,7 +17,6 @@
         } 
         .container { max-width: 800px; margin: 0 auto; }
         
-        /* Neon Glow Text */
         h1 { 
             color: #ff00ff; 
             text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff; 
@@ -27,18 +26,16 @@
             letter-spacing: 2px;
         }
 
-        /* Boxy Retro Screens */
         .screen { 
             background: #000; 
             padding: 25px; 
             margin: 20px 0; 
-            border: 2px solid #00ffff; /* Cyan Border */
+            border: 2px solid #00ffff; 
             box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
         }
         
         .hidden { display: none !important; }
 
-        /* Inputs: Black terminal style */
         input[type="text"] { 
             padding: 15px; 
             width: 70%; 
@@ -51,7 +48,6 @@
         }
         input::placeholder { color: #884488; }
 
-        /* Buttons: Boxy and Bright */
         button { 
             padding: 15px 25px; 
             border: none; 
@@ -68,23 +64,13 @@
         button:hover { background: #fff; transform: scale(1.05); }
         button:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
         
-        /* Specific Button Colors */
         button.host-btn { background: #ff00ff; color: #fff; }
         button.danger-btn { background: #ff3333; color: #fff; padding: 2px 8px; font-size: 0.8rem; margin: 0 0 0 10px; }
 
-        /* Song List Items */
-        .song-item { 
-            background: #1a1a1a; 
-            padding: 10px; 
-            margin: 5px 0; 
-            cursor: pointer; 
-            border: 1px solid #333; 
-            text-align: left; 
-        }
+        .song-item { background: #1a1a1a; padding: 10px; margin: 5px 0; cursor: pointer; border: 1px solid #333; text-align: left; }
         .song-item:hover { background: #222; border-color: #00ffff; }
         .song-item.selected { border-left: 8px solid #ff00ff; background: #220022; }
 
-        /* Lists */
         #playerList li, #scoreList li, #runnerUpList li { 
             background: #000; 
             border-bottom: 1px solid #333;
@@ -95,7 +81,6 @@
             align-items: center; 
         }
 
-        /* Progress Bar */
         .progress-container { width: 100%; height: 15px; background: #333; margin: 15px 0; border: 1px solid #fff; }
         .progress-bar { height: 100%; background: #00ffff; width: 0%; transition: width 0.5s; }
 
@@ -104,7 +89,6 @@
         .guess-correct { color: #00ff00; font-weight: bold; margin: 10px; font-size: 1.2rem; text-transform: uppercase; }
         .guess-incorrect { color: #ff3333; font-weight: bold; margin: 10px; text-transform: uppercase; }
         
-        /* CHAT & BOTTOM PANEL */
         #bottomPanel { 
             position: fixed; bottom: 0; left: 0; width: 100%; 
             background: #000; 
@@ -122,7 +106,6 @@
         #inputRow { width: 100%; max-width: 800px; display: flex; gap: 10px; }
         #inputRow input { flex: 1; }
         
-        /* Chat Colors */
         .chat-msg { margin: 2px 0; }
         .chat-name { font-weight: bold; text-transform: uppercase; }
         .chat-correct { color: #00ff00; }
@@ -131,26 +114,28 @@
         .chat-wrong { color: #666; }
         .input-winner { border: 2px solid #00ff00 !important; color: #00ff00 !important; }
 
-        /* Podium */
+        /* --- UPDATED NEON PODIUM --- */
         .podium-container { display: flex; justify-content: center; align-items: flex-end; height: 300px; margin-bottom: 30px; gap: 10px; }
         .pillar { 
             display: flex; flex-direction: column; justify-content: flex-end; align-items: center; 
             width: 100px; 
-            border: 2px solid #fff; /* Retro Outline */
+            border: 3px solid #fff; 
             color: #000; font-weight: bold; text-align: center; padding-bottom: 10px; position: relative; 
         }
         .pillar-name { position: absolute; top: -40px; width: 100%; color: #fff; font-size: 1.1rem; font-weight: bold; text-shadow: 2px 2px #000; }
         .pillar-score { font-size: 1.5rem; }
         .rank-label { font-size: 2rem; opacity: 0.5; margin-bottom: 10px; font-weight: bold;}
         
-        .gold { background: #ffff00; height: 220px; order: 2; z-index: 10; box-shadow: 0 0 20px rgba(255,255,0,0.5); }
-        .silver { background: #cccccc; height: 160px; order: 1; }
-        .bronze { background: #cd7f32; height: 110px; order: 3; }
+        /* 1ST: NEON YELLOW (SUN) */
+        .gold { background: #ffff00; height: 220px; order: 2; z-index: 10; box-shadow: 0 0 30px #ffff00; border-color: #ffff00; }
+        /* 2ND: NEON CYAN (GRID) */
+        .silver { background: #00ffff; height: 160px; order: 1; box-shadow: 0 0 20px #00ffff; border-color: #00ffff; }
+        /* 3RD: NEON MAGENTA (SUNSET) */
+        .bronze { background: #ff00ff; height: 110px; order: 3; box-shadow: 0 0 20px #ff00ff; border-color: #ff00ff; }
         
         #activeSubmitter { font-style: italic; color: #ff00ff; margin-bottom: 10px; }
         .status-message { color: #ff3333; margin-top: 10px; font-weight: bold; display: none; }
 
-        /* Color Picker */
         .color-options { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
         .color-dot { width: 30px; height: 30px; border: 2px solid #000; cursor: pointer; transition: transform 0.2s; } 
         .color-dot:hover { transform: scale(1.2); border-color: #fff; }
@@ -245,7 +230,6 @@
         let selectedTrack = null;
         let myColor = '#00ffff'; 
 
-        // --- RETRO NEON PALETTE ---
         const colors = ['#ff00ff', '#00ffff', '#ffff00', '#00ff00', '#ff9900', '#bd00ff', '#ff3333', '#ffffff'];
         
         const picker = document.getElementById('colorPicker');
