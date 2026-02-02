@@ -17,13 +17,19 @@
         } 
         .container { max-width: 800px; margin: 0 auto; }
         
+        /* UPDATED: CLEANER 3D TITLE (Less "Fuzzy", More "Arcade") */
         h1 { 
-            color: #ff00ff; 
-            text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff; 
-            margin-bottom: 20px; 
-            font-size: 2.5rem;
+            color: #ffffff;
+            /* Hard shadow instead of fuzzy glow for better readability */
+            text-shadow: 4px 4px 0px #ff00ff; 
+            margin-bottom: 30px; 
+            font-size: 3rem;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 4px;
+            font-weight: 900;
+            border-bottom: 2px solid #ff00ff;
+            padding-bottom: 10px;
+            display: inline-block;
         }
 
         .screen { 
@@ -114,7 +120,6 @@
         .chat-wrong { color: #666; }
         .input-winner { border: 2px solid #00ff00 !important; color: #00ff00 !important; }
 
-        /* --- UPDATED NEON PODIUM --- */
         .podium-container { display: flex; justify-content: center; align-items: flex-end; height: 300px; margin-bottom: 30px; gap: 10px; }
         .pillar { 
             display: flex; flex-direction: column; justify-content: flex-end; align-items: center; 
@@ -126,11 +131,8 @@
         .pillar-score { font-size: 1.5rem; }
         .rank-label { font-size: 2rem; opacity: 0.5; margin-bottom: 10px; font-weight: bold;}
         
-        /* 1ST: NEON YELLOW (SUN) */
         .gold { background: #ffff00; height: 220px; order: 2; z-index: 10; box-shadow: 0 0 30px #ffff00; border-color: #ffff00; }
-        /* 2ND: NEON CYAN (GRID) */
         .silver { background: #00ffff; height: 160px; order: 1; box-shadow: 0 0 20px #00ffff; border-color: #00ffff; }
-        /* 3RD: NEON MAGENTA (SUNSET) */
         .bronze { background: #ff00ff; height: 110px; order: 3; box-shadow: 0 0 20px #ff00ff; border-color: #ff00ff; }
         
         #activeSubmitter { font-style: italic; color: #ff00ff; margin-bottom: 10px; }
@@ -145,7 +147,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎵 NOT SONGLIO 🎵</h1>
+        <h1>NOT SONGLIO</h1>
         
         <div class="screen" id="loginScreen">
             <h2>CHOOSE YOUR CHARACTER</h2>
