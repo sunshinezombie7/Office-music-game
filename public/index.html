@@ -15,6 +15,7 @@
         button { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; margin: 5px; background: #3498db; color: white; }
         button:disabled { background: #555; cursor: not-allowed; }
         button.host-btn { background: #2ecc71; }
+        button.danger-btn { background: #e74c3c; padding: 2px 8px; font-size: 0.8rem; margin: 0 0 0 10px; }
         .song-item { background: #2a2a3a; padding: 10px; margin: 5px 0; cursor: pointer; border-radius: 5px; text-align: left; }
         .song-item:hover { background: #333; }
         .song-item.selected { border-left: 5px solid #9b59b6; background: #333; }
@@ -35,7 +36,7 @@
         .chat-correct { color: #2ecc71; font-weight: bold; font-style: italic; }
         .chat-winner { color: #f1c40f; font-weight: bold; }
         .chat-dj { color: #9b59b6; font-weight: bold; } 
-        .chat-name { font-weight: bold; } /* Color applied inline */
+        .chat-name { font-weight: bold; } 
         .input-winner { border: 2px solid #2ecc71 !important; color: #2ecc71 !important; }
 
         .podium-container { display: flex; justify-content: center; align-items: flex-end; height: 300px; margin-bottom: 30px; gap: 10px; }
@@ -49,12 +50,10 @@
         #activeSubmitter { font-style: italic; color: #9b59b6; margin-bottom: 10px; }
         .status-message { color: #e74c3c; margin-top: 10px; font-weight: bold; display: none; }
 
-        /* COLOR PICKER */
         .color-options { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
         .color-dot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; }
         .color-dot:hover { transform: scale(1.2); }
         .color-dot.selected { border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); }
-        
         .player-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; display: inline-block; }
     </style>
 </head>
@@ -64,9 +63,9 @@
         <div class="screen" id="loginScreen">
             <h2>Join Game</h2>
             <input type="text" id="playerName" placeholder="Enter your name..." maxlength="15">
-            
             <p style="margin: 15px 0 5px; font-size: 0.9rem; color: #ccc;">Choose your color:</p>
-            <div class="color-options" id="colorPicker"></div> <br>
+            <div class="color-options" id="colorPicker"></div>
+            <br>
             <button id="joinBtn">Join</button>
             <div id="loginStatus" class="status-message"></div>
         </div>
@@ -135,31 +134,35 @@
         <div id="guessFeedback" style="height: 20px; margin-top: 5px; font-weight: bold;"></div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io(); 
         let myId = null;
         let selectedTrack = null;
-        let myColor = '#3498db'; // Default
+        let myColor = '#3498db'; 
 
-        // SETUP COLOR PICKER (Fixed)
+        // COLOR PICKER
         const colors = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#1abc9c', '#3498db', '#9b59b6', '#ff7979'];
         const picker = document.getElementById('colorPicker');
-        
-        picker.innerHTML = ''; // Clean slate to prevent bugs
-        colors.forEach(c => {
-            const dot = document.createElement('div');
-            dot.className = 'color-dot';
-            dot.style.backgroundColor = c;
-            dot.onclick = () => {
-                document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
-                dot.classList.add('selected');
-                myColor = c;
-            };
-            picker.appendChild(dot);
-        });
-        if(picker.firstElementChild) picker.firstElementChild.classList.add('selected');
-        myColor = colors[0];
+        if (picker) {
+            picker.innerHTML = ''; 
+            colors.forEach(c => {
+                const dot = document.createElement('div');
+                dot.className = 'color-dot';
+                dot.style.backgroundColor = c;
+                dot.onclick = () => {
+                    Array.from(picker.children).forEach(d => d.classList.remove('selected'));
+                    dot.classList.add('selected');
+                    myColor = c;
+                };
+                picker.appendChild(dot);
+            });
+            if (picker.children.length > 0) {
+                picker.children[0].classList.add('selected');
+                myColor = colors[0];
+            }
+        }
 
         socket.on('connect', () => { myId = socket.id; });
         socket.on('playerJoined', (data) => {
@@ -272,12 +275,23 @@
 
         socket.on('gameFinished', (data) => {
             showScreen('resultsScreen');
+            
+            // --- 2. TRIGGER CONFETTI! ---
+            const duration = 3000;
+            const end = Date.now() + duration;
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+
             const podium = document.getElementById('podium');
             const runnerList = document.getElementById('runnerUpList');
             podium.innerHTML = '';
             runnerList.innerHTML = '';
             const allPlayers = Object.values(data.scores).sort((a,b) => b.score - a.score);
             const top3 = allPlayers.slice(0, 3);
+            
             const createPillar = (player, rankClass, rankNum) => {
                 if(!player) return;
                 const div = document.createElement('div');
@@ -288,6 +302,7 @@
             createPillar(top3[1], 'silver', '2nd');
             createPillar(top3[0], 'gold', '1st');
             createPillar(top3[2], 'bronze', '3rd');
+            
             const rest = allPlayers.slice(3);
             if(rest.length === 0) { document.getElementById('runnerUps').classList.add('hidden'); } 
             else { document.getElementById('runnerUps').classList.remove('hidden'); rest.forEach((p, index) => { 
@@ -298,6 +313,7 @@
         });
         
         socket.on('playAgainStarted', () => location.reload());
+
         function addEnterKey(inputId, btnId) {
             const input = document.getElementById(inputId);
             if(input) { input.addEventListener("keypress", function(event) { if (event.key === "Enter") { event.preventDefault(); document.getElementById(btnId).click(); } }); }
@@ -306,12 +322,9 @@
         addEnterKey("searchInput", "searchBtn");
         addEnterKey("guessInput", "submitGuessBtn");
         
-        // NEW JOIN LOGIC
         document.getElementById('joinBtn').onclick = () => { 
             const name = document.getElementById('playerName').value; 
-            if(name) { 
-                socket.emit('joinGame', { name: name, color: myColor }); 
-            } 
+            if(name) { socket.emit('joinGame', { name: name, color: myColor }); } 
         };
         
         document.getElementById('searchBtn').onclick = () => { const query = document.getElementById('searchInput').value; if(query) socket.emit('searchSongs', query); };
@@ -321,16 +334,30 @@
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
         
+        // --- 3. UPDATED LOBBY WITH KICK BUTTON ---
         function updateLobby(data) {
             const myPlayer = data.players[myId];
             if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) { showScreen('submissionScreen'); }
             document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0; document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; const list = document.getElementById('playerList'); list.innerHTML = ''; 
+            
+            const amIHost = (myId === data.hostId);
+
             Object.values(data.players).forEach(p => { 
                 const li = document.createElement('li'); 
-                li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span> ${p.hasSubmitted ? '✅' : '⏳'}`; 
+                
+                let html = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span>`;
+                
+                // Show Kick Button only if I am Host AND this is not me
+                if (amIHost && p.id !== myId) {
+                    html += `<div style="display:flex; align-items:center; gap:10px;">${p.hasSubmitted ? '✅' : '⏳'}<button class="danger-btn" onclick="kickPlayer('${p.id}')">❌</button></div>`;
+                } else {
+                    html += `${p.hasSubmitted ? '✅' : '⏳'}`;
+                }
+                li.innerHTML = html;
                 list.appendChild(li); 
             }); 
         }
+        
         function updateScores(scores, listId) { 
             const list = document.getElementById(listId); list.innerHTML = ''; const sorted = Object.values(scores).sort((a,b) => b.score - a.score); 
             sorted.forEach(p => { 
@@ -339,6 +366,13 @@
                 list.appendChild(li); 
             }); 
         }
+
+        // Global Kick Function
+        window.kickPlayer = function(id) {
+            if(confirm("Kick this player?")) {
+                socket.emit('kickPlayer', id);
+            }
+        };
     </script>
 </body>
 </html>
