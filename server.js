@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const axios = require('axios');
 const path = require('path');
 
-// Simple Levenshtein for typos
+// Levenshtein for typos
 const levenshtein = (a, b) => {
     if(a.length == 0) return b.length; 
     if(b.length == 0) return a.length; 
@@ -97,26 +97,34 @@ io.on('connection', (socket) => {
     socket.on('submitGuess', (guess) => {
         if (gameState !== 'playing' || !gameQueue[currentRoundIndex]) return;
 
-        // 1. Prevent guessing if already correct
-        if (roundWinners.has(socket.id)) {
-            socket.emit('guessResult', { correct: true, points: 0, message: "You already got this one!" });
-            return;
-        }
-
         const currentTrack = gameQueue[currentRoundIndex];
         const playerName = players[socket.id].name;
-
-        // 2. Prevent guessing own song
-        if (socket.id === currentTrack.submitterId) {
-             socket.emit('guessResult', { correct: false, message: "You can't guess your own song!" });
-             return;
-        }
-
         const clean = (str) => (str || "").toLowerCase().replace(/[^\w\s]/gi, '').trim();
         const userGuess = clean(guess);
         const title = clean(currentTrack.trackName);
         const artist = clean(currentTrack.artistName);
 
+        // 1. ALREADY WON? TREAT AS CHAT
+        if (roundWinners.has(socket.id)) {
+            // Spoiler check: Don't let winners type the answer again!
+            if (userGuess.includes(title) || title.includes(userGuess)) {
+                 socket.emit('guessResult', { correct: true, points: 0, message: "Don't spoil the answer!" });
+            } else {
+                 // Broadcast as "Winner Chat" (Green Text)
+                 io.emit('chatMessage', { name: playerName, text: guess, type: 'winner-chat' });
+                 // Tell client it was sent successfully (clears box)
+                 socket.emit('guessResult', { correct: true, points: 0, silent: true });
+            }
+            return;
+        }
+
+        // 2. PREVENT GUESSING OWN SONG
+        if (socket.id === currentTrack.submitterId) {
+             socket.emit('guessResult', { correct: false, message: "You can't guess your own song!" });
+             return;
+        }
+
+        // 3. CHECK GUESS
         const isTitleMatch = (userGuess.length > 2 && title.includes(userGuess)) || userGuess === title;
         const isArtistMatch = (userGuess.length > 2 && artist.includes(userGuess)) || userGuess === artist;
         const titleDist = levenshtein(userGuess, title);
@@ -130,23 +138,15 @@ io.on('connection', (socket) => {
             
             socket.emit('guessResult', { correct: true, points: 10 });
             
-            // BROADCAST: "Alex guessed correctly!" (Hide the word)
-            io.emit('chatMessage', { 
-                name: playerName, 
-                text: "Guessed the answer!", 
-                type: 'correct' 
-            });
+            // Broadcast: "Alex guessed correctly!"
+            io.emit('chatMessage', { name: playerName, text: "Guessed the answer!", type: 'correct' });
             
         } else {
             // WRONG!
             socket.emit('guessResult', { correct: false });
             
-            // BROADCAST: The actual wrong guess so everyone can see
-            io.emit('chatMessage', { 
-                name: playerName, 
-                text: guess, 
-                type: 'wrong' 
-            });
+            // Broadcast wrong guess to everyone
+            io.emit('chatMessage', { name: playerName, text: guess, type: 'wrong' });
         }
     });
     
