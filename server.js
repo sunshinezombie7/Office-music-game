@@ -37,19 +37,31 @@ let submittedPlayers = new Set();
 let gameState = 'lobby'; 
 let currentRoundIndex = 0;
 let roundTimer = null;
-let roundStartTime = 0; // NEW: Tracks when the music started
+let roundStartTime = 0; 
 let roundWinners = new Set(); 
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    socket.on('joinGame', (name) => {
+    socket.on('joinGame', (nameInput) => {
+        const cleanName = (nameInput || "").trim();
+        
+        // --- 1. NEW: DUPLICATE NAME CHECK ---
+        const isTaken = Object.values(players).some(p => p.name.toLowerCase() === cleanName.toLowerCase());
+        
+        if (isTaken) {
+            socket.emit('loginError', "Name already taken! Choose another.");
+            return;
+        }
+        
+        // Add Player
         players[socket.id] = {
             id: socket.id,
-            name: name || `Player ${socket.id.substr(0,4)}`,
+            name: cleanName || `Player ${socket.id.substr(0,4)}`,
             score: 0,
             hasSubmitted: false
         };
+        
         io.emit('playerJoined', {
             players: players,
             hostId: Object.keys(players)[0],
@@ -94,7 +106,6 @@ io.on('connection', (socket) => {
         setTimeout(startRound, 3000);
     });
 
-    // --- CHAT & GUESS LOGIC ---
     socket.on('submitGuess', (guess) => {
         if (gameState !== 'playing' || !gameQueue[currentRoundIndex]) return;
 
@@ -105,7 +116,6 @@ io.on('connection', (socket) => {
         const title = clean(currentTrack.trackName);
         const artist = clean(currentTrack.artistName);
 
-        // 1. ALREADY WON? TREAT AS CHAT
         if (roundWinners.has(socket.id)) {
             if (userGuess.includes(title) || title.includes(userGuess)) {
                  socket.emit('guessResult', { correct: true, points: 0, message: "Don't spoil the answer!" });
@@ -116,40 +126,30 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // 2. PREVENT GUESSING OWN SONG
         if (socket.id === currentTrack.submitterId) {
              socket.emit('guessResult', { correct: false, message: "You can't guess your own song!" });
              return;
         }
 
-        // 3. CHECK GUESS
         const isTitleMatch = (userGuess.length > 2 && title.includes(userGuess)) || userGuess === title;
         const isArtistMatch = (userGuess.length > 2 && artist.includes(userGuess)) || userGuess === artist;
         const titleDist = levenshtein(userGuess, title);
         const allowedTypos = Math.max(2, Math.floor(title.length * 0.4));
 
         if (isTitleMatch || isArtistMatch || titleDist <= allowedTypos) {
-            
-            // --- NEW TIME-BASED SCORING ---
             const now = Date.now();
             const elapsedSeconds = (now - roundStartTime) / 1000;
-            // Max time is 30. Points = Time remaining. Minimum 5 points.
             let pointsEarned = Math.max(5, Math.ceil(30 - elapsedSeconds));
             
-            // GUESSER REWARD
             players[socket.id].score += pointsEarned;
-            
-            // SUBMITTER REWARD: Still +3 per guess
             if(players[currentTrack.submitterId]) {
                 players[currentTrack.submitterId].score += 3;
             }
 
             roundWinners.add(socket.id);
-            
             socket.emit('guessResult', { correct: true, points: pointsEarned });
             io.emit('chatMessage', { name: playerName, text: `Guessed correctly! (+${pointsEarned} pts)`, type: 'correct' });
 
-            // END ROUND EARLY LOGIC
             const totalPossibleGuessers = Object.keys(players).length - 1;
             if (roundWinners.size >= totalPossibleGuessers && totalPossibleGuessers > 0) {
                 setTimeout(() => {
@@ -157,9 +157,7 @@ io.on('connection', (socket) => {
                     endRound();
                 }, 1000);
             }
-            
         } else {
-            // WRONG!
             socket.emit('guessResult', { correct: false });
             io.emit('chatMessage', { name: playerName, text: guess, type: 'wrong' });
         }
@@ -190,8 +188,6 @@ function startRound() {
     }
     roundWinners.clear();
     const track = gameQueue[currentRoundIndex];
-    
-    // START THE CLOCK
     roundStartTime = Date.now();
     
     io.emit('playTrack', {
@@ -199,7 +195,7 @@ function startRound() {
         totalTracks: gameQueue.length,
         roundCountdown: 30,
         track: { previewUrl: track.previewUrl },
-        submitterName: track.submitterName // NEW: Send this immediately
+        submitterName: track.submitterName
     });
     
     let timeLeft = 30;
