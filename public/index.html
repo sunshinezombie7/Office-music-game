@@ -334,12 +334,20 @@
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
         
-        // --- 3. UPDATED LOBBY WITH KICK BUTTON ---
+       // --- UPDATED LOBBY WITH KICK BUTTON ---
         function updateLobby(data) {
             const myPlayer = data.players[myId];
-            if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) { showScreen('submissionScreen'); }
-            document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0; document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; const list = document.getElementById('playerList'); list.innerHTML = ''; 
+            if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) { 
+                showScreen('submissionScreen'); 
+            }
             
+            document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0; 
+            document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; 
+            
+            const list = document.getElementById('playerList'); 
+            list.innerHTML = ''; 
+            
+            // Check if I am the host (first player)
             const amIHost = (myId === data.hostId);
 
             Object.values(data.players).forEach(p => { 
@@ -349,14 +357,27 @@
                 
                 // Show Kick Button only if I am Host AND this is not me
                 if (amIHost && p.id !== myId) {
-                    html += `<div style="display:flex; align-items:center; gap:10px;">${p.hasSubmitted ? '✅' : '⏳'}<button class="danger-btn" onclick="kickPlayer('${p.id}')">❌</button></div>`;
+                    html += `
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            ${p.hasSubmitted ? '✅' : '⏳'}
+                            <button class="danger-btn" onclick="kickPlayer('${p.id}')">❌</button>
+                        </div>
+                    `;
                 } else {
                     html += `${p.hasSubmitted ? '✅' : '⏳'}`;
                 }
+                
                 li.innerHTML = html;
                 list.appendChild(li); 
             }); 
         }
+
+        // Global Kick Function (Required for the button to work)
+        window.kickPlayer = function(id) {
+            if(confirm("Are you sure you want to kick this player?")) {
+                socket.emit('kickPlayer', id);
+            }
+        };
         
         function updateScores(scores, listId) { 
             const list = document.getElementById(listId); list.innerHTML = ''; const sorted = Object.values(scores).sort((a,b) => b.score - a.score); 
