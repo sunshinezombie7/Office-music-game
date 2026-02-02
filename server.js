@@ -44,11 +44,9 @@ let isRoundActive = false;
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // UPDATED: Now accepts an object { name, color }
     socket.on('joinGame', (data) => {
         let nameInput = data.name || "";
         let colorInput = data.color || "#3498db";
-
         const cleanName = nameInput.trim();
         const isTaken = Object.values(players).some(p => p.name.toLowerCase() === cleanName.toLowerCase());
         
@@ -60,7 +58,7 @@ io.on('connection', (socket) => {
         players[socket.id] = {
             id: socket.id,
             name: cleanName || `Player ${socket.id.substr(0,4)}`,
-            color: colorInput, // Store the color
+            color: colorInput,
             score: 0,
             hasSubmitted: false
         };
@@ -70,6 +68,30 @@ io.on('connection', (socket) => {
             hostId: Object.keys(players)[0],
             submittedPlayers: Array.from(submittedPlayers)
         });
+    });
+
+    // --- NEW: KICK PLAYER FUNCTION ---
+    socket.on('kickPlayer', (targetId) => {
+        // Only host (first player) can kick
+        const hostId = Object.keys(players)[0];
+        if (socket.id !== hostId) return;
+
+        if (players[targetId]) {
+            // Disconnect the target socket
+            const targetSocket = io.sockets.sockets.get(targetId);
+            if (targetSocket) targetSocket.disconnect(true);
+            
+            // Clean up
+            delete players[targetId];
+            submittedPlayers.delete(targetId);
+            
+            // Update everyone
+            io.emit('playerJoined', {
+                players: players,
+                hostId: Object.keys(players)[0],
+                submittedPlayers: Array.from(submittedPlayers)
+            });
+        }
     });
 
     socket.on('searchSongs', async (query) => {
@@ -114,9 +136,8 @@ io.on('connection', (socket) => {
 
         const player = players[socket.id];
         const playerName = player.name;
-        const playerColor = player.color; // Get color
+        const playerColor = player.color;
         
-        // CASE 1: BETWEEN ROUNDS (Just Chat)
         if (!isRoundActive) {
             io.emit('chatMessage', { name: playerName, text: guess, type: 'chat', color: playerColor });
             socket.emit('guessResult', { correct: true, points: 0, silent: true });
@@ -129,7 +150,6 @@ io.on('connection', (socket) => {
         const title = clean(currentTrack.trackName);
         const artist = clean(currentTrack.artistName);
 
-        // CASE 2: ALREADY WON (Winner Chat)
         if (roundWinners.has(socket.id)) {
             if (userGuess.includes(title) || title.includes(userGuess)) {
                  socket.emit('guessResult', { correct: true, points: 0, message: "Don't spoil it!" });
@@ -140,7 +160,6 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // CASE 3: SUBMITTER (DJ Chat)
         if (socket.id === currentTrack.submitterId) {
              if (userGuess.includes(title) || title.includes(userGuess)) {
                  socket.emit('guessResult', { correct: false, message: "Don't spoil your own song!" });
@@ -151,7 +170,6 @@ io.on('connection', (socket) => {
              return;
         }
 
-        // CASE 4: NORMAL GUESS
         const isTitleMatch = (userGuess.length > 2 && title.includes(userGuess)) || userGuess === title;
         const isArtistMatch = (userGuess.length > 2 && artist.includes(userGuess)) || userGuess === artist;
         const titleDist = levenshtein(userGuess, title);
