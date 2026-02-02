@@ -98,7 +98,7 @@ io.on('connection', (socket) => {
         setTimeout(startRound, 3000);
     });
 
-    // 5. GUESS LOGIC
+   // 5. GUESS LOGIC (IMPROVED)
     socket.on('submitGuess', (guess) => {
         if (gameState !== 'playing' || !gameQueue[currentRoundIndex]) return;
 
@@ -110,17 +110,32 @@ io.on('connection', (socket) => {
              return;
         }
 
-        // FUZZY MATCHING (Levenshtein)
-        const cleanGuess = guess.toLowerCase().trim();
-        const titleDist = new levenshtein(cleanGuess, currentTrack.trackName.toLowerCase()).distance;
-        const artistDist = new levenshtein(cleanGuess, currentTrack.artistName.toLowerCase()).distance;
+        // --- SMARTER FUZZY MATCHING ---
+        // 1. Clean up strings (remove punctuation, extra spaces, lowercase)
+        const clean = (str) => str.toLowerCase().replace(/[^\w\s]/gi, '').trim();
         
-        // Allow typo tolerance (3 characters or less wrong)
-        const isCorrect = titleDist <= 3 || artistDist <= 3 || currentTrack.trackName.toLowerCase().includes(cleanGuess);
+        const userGuess = clean(guess);
+        const title = clean(currentTrack.trackName);
+        const artist = clean(currentTrack.artistName);
 
-        if (isCorrect) {
+        // 2. Check for exact containment (e.g. guess "queen" matches "killer queen")
+        // We only allow this if the guess is at least 4 characters long to prevent cheap guesses like "a" or "the"
+        const isTitleMatch = (userGuess.length > 3 && title.includes(userGuess)) || userGuess === title;
+        const isArtistMatch = (userGuess.length > 3 && artist.includes(userGuess)) || userGuess === artist;
+
+        // 3. Levenshtein (Typo Tolerance)
+        // We allow more typos for longer words. (Accepts ~30% wrong characters)
+        const titleDist = new levenshtein(userGuess, title).distance;
+        const artistDist = new levenshtein(userGuess, artist).distance;
+        const allowedTyposTitle = Math.floor(title.length * 0.3); 
+        const allowedTyposArtist = Math.floor(artist.length * 0.3);
+
+        const isTypoMatch = titleDist <= allowedTyposTitle || artistDist <= allowedTyposArtist;
+
+        if (isTitleMatch || isArtistMatch || isTypoMatch) {
             players[socket.id].score += 10;
-            // Bonus for the person who picked the song (their song was recognizable!)
+            
+            // Bonus for the submitter
             if(players[currentTrack.submitterId]) {
                 players[currentTrack.submitterId].score += 2;
             }
