@@ -25,39 +25,29 @@
         .guess-correct { color: #2ecc71; font-weight: bold; margin: 10px; font-size: 1.2rem; }
         .guess-incorrect { color: #e74c3c; font-weight: bold; margin: 10px; }
         
-        /* CHAT BOX STYLES */
-        #chatBox {
-            height: 150px;
-            overflow-y: auto;
-            background: #111;
-            border: 1px solid #444;
-            border-radius: 5px;
-            padding: 10px;
-            margin-bottom: 15px;
-            text-align: left;
-            display: flex;
-            flex-direction: column;
-        }
+        /* CHAT STYLES */
+        #chatBox { height: 150px; overflow-y: auto; background: #111; border: 1px solid #444; border-radius: 5px; padding: 10px; margin-bottom: 15px; text-align: left; display: flex; flex-direction: column; }
         .chat-msg { margin: 2px 0; font-size: 0.9rem; }
         .chat-wrong { color: #ccc; }
         .chat-correct { color: #2ecc71; font-weight: bold; font-style: italic; }
+        .chat-winner { color: #f1c40f; font-weight: bold; } /* Gold color for winner chat */
         .chat-name { font-weight: bold; color: #3498db; }
+        
+        /* Input state for winners */
+        .input-winner { border: 2px solid #2ecc71 !important; color: #2ecc71 !important; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🎵 Not Songlio 🎵</h1>
-
         <div class="screen" id="loginScreen">
             <h2>Join Game</h2>
             <input type="text" id="playerName" placeholder="Enter your name..." maxlength="15">
             <br><br>
             <button id="joinBtn">Join</button>
         </div>
-
         <div class="screen hidden" id="submissionScreen">
             <h2>Pick a Song</h2>
-            <p>Search for a song for others to guess:</p>
             <div style="margin-bottom: 15px;">
                 <input type="text" id="searchInput" placeholder="Song or Artist...">
                 <button id="searchBtn">Search</button>
@@ -79,56 +69,46 @@
                 <button id="startGameBtn" class="host-btn" disabled>Start Game</button>
             </div>
         </div>
-
         <div class="screen hidden" id="gameScreen">
             <h2>Guess the Song!</h2>
             <div class="progress-container"><div class="progress-bar" id="gameProgress"></div></div>
             <p>Track <span id="trackNum">1</span></p>
             <div id="countdown">15</div>
             <audio id="gameAudio" style="display:none"></audio>
-            
             <div id="chatBox"></div>
-            
             <div id="questionArea">
                 <div style="font-size: 3rem; margin: 20px;">❓</div>
                 <input type="text" id="guessInput" placeholder="Type guess..." autocomplete="off">
                 <button id="submitGuessBtn">Guess</button>
                 <div id="guessFeedback"></div>
             </div>
-
             <div id="revealArea" class="hidden">
                 <img id="albumArt" src="" style="width:150px; border-radius:10px;">
                 <h3 id="revealTitle" style="color:#f39c12; margin-top:10px;">Title</h3>
                 <p id="revealArtist" style="color:#3498db">Artist</p>
                 <p id="revealSubmitter" style="color:#9b59b6; font-style:italic;">Picked by: ???</p>
             </div>
-
             <div id="scoreboard" style="margin-top: 30px; text-align: left;">
                 <h3>Scores</h3>
                 <ul id="scoreList"></ul>
             </div>
         </div>
-
         <div class="screen hidden" id="resultsScreen">
             <h2>Game Over!</h2>
             <ul id="finalScoreList"></ul>
             <button id="playAgainBtn" class="host-btn">Play Again</button>
         </div>
     </div>
-
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io(); 
         let myId = null;
         let selectedTrack = null;
-
         socket.on('connect', () => { myId = socket.id; });
-
         socket.on('playerJoined', (data) => {
             updateLobby(data);
             if(data.hostId === myId) document.getElementById('hostControls').classList.remove('hidden');
         });
-
         socket.on('searchResults', (results) => {
             const container = document.getElementById('searchResults');
             container.innerHTML = '';
@@ -147,55 +127,48 @@
                 container.appendChild(div);
             });
         });
-
         socket.on('songSubmitted', (data) => {
             updateLobby(data);
             if(data.isReady) document.getElementById('startGameBtn').disabled = false;
         });
-
         socket.on('gameStarted', (data) => showScreen('gameScreen'));
-
-        // --- CHAT LOGIC ---
         socket.on('chatMessage', (data) => {
             const chatBox = document.getElementById('chatBox');
             const div = document.createElement('div');
             div.className = 'chat-msg';
-            
-            // Format: "Name: Guess"
             if(data.type === 'correct') {
                 div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-correct">${data.text}</span>`;
+            } else if (data.type === 'winner-chat') {
+                div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-winner">${data.text}</span>`;
             } else {
                 div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-wrong">${data.text}</span>`;
             }
-            
             chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to bottom
+            chatBox.scrollTop = chatBox.scrollHeight;
         });
-
         socket.on('playTrack', (data) => {
             document.getElementById('questionArea').classList.remove('hidden');
             document.getElementById('revealArea').classList.add('hidden');
+            document.getElementById('chatBox').innerHTML = '';
             
-            // RESET ROUND
-            document.getElementById('chatBox').innerHTML = ''; // Clear chat
+            // RESET INPUT
             const input = document.getElementById('guessInput');
             input.value = '';
             input.disabled = false;
+            input.classList.remove('input-winner'); // Remove green style
+            input.placeholder = "Type guess...";
             input.focus();
             
             document.getElementById('submitGuessBtn').disabled = false;
             document.getElementById('guessFeedback').textContent = '';
             document.getElementById('trackNum').textContent = data.trackIndex + 1;
-            
             const audio = document.getElementById('gameAudio');
             audio.src = data.track.previewUrl;
             audio.volume = 0.5;
             audio.play().catch(e => console.log("Autoplay blocked"));
             document.getElementById('countdown').textContent = data.roundCountdown;
         });
-
         socket.on('countdown', (t) => document.getElementById('countdown').textContent = t);
-
         socket.on('roundEnded', (data) => {
             document.getElementById('questionArea').classList.add('hidden');
             document.getElementById('revealArea').classList.remove('hidden');
@@ -206,16 +179,25 @@
             document.getElementById('gameAudio').pause();
             updateScores(data.scores, 'scoreList');
         });
-
         socket.on('guessResult', (data) => {
             const fb = document.getElementById('guessFeedback');
             const input = document.getElementById('guessInput');
             
+            // If silent update (for winner chat), just clear box
+            if(data.silent) {
+                input.value = '';
+                input.focus();
+                return;
+            }
+
             if(data.correct) {
                 fb.textContent = `✅ Correct! +${data.points} Points`;
                 fb.className = "guess-correct";
-                input.disabled = true;
-                document.getElementById('submitGuessBtn').disabled = true;
+                // DO NOT DISABLE - Just style it
+                input.classList.add('input-winner');
+                input.placeholder = "Chat with others...";
+                input.value = '';
+                input.focus();
             } else {
                 fb.textContent = data.message ? "⚠️ " + data.message : "❌ Wrong!";
                 fb.className = "guess-incorrect";
@@ -224,14 +206,11 @@
                 input.focus();
             }
         });
-
         socket.on('gameFinished', (data) => {
             showScreen('resultsScreen');
             updateScores(data.scores, 'finalScoreList');
         });
-        
         socket.on('playAgainStarted', () => location.reload());
-
         function addEnterKey(inputId, btnId) {
             const input = document.getElementById(inputId);
             if(input) {
@@ -246,55 +225,15 @@
         addEnterKey("playerName", "joinBtn");
         addEnterKey("searchInput", "searchBtn");
         addEnterKey("guessInput", "submitGuessBtn");
-
-        document.getElementById('joinBtn').onclick = () => {
-            const name = document.getElementById('playerName').value;
-            if(name) { socket.emit('joinGame', name); showScreen('submissionScreen'); }
-        };
-        document.getElementById('searchBtn').onclick = () => {
-            const query = document.getElementById('searchInput').value;
-            if(query) socket.emit('searchSongs', query);
-        };
-        document.getElementById('submitSongBtn').onclick = () => {
-            if(selectedTrack) {
-                socket.emit('submitSong', selectedTrack);
-                document.getElementById('selectedSong').innerHTML = "<h3>Song Submitted! Waiting...</h3>";
-                document.getElementById('searchResults').classList.add('hidden');
-                document.getElementById('waitingArea').classList.remove('hidden');
-            }
-        };
+        document.getElementById('joinBtn').onclick = () => { const name = document.getElementById('playerName').value; if(name) { socket.emit('joinGame', name); showScreen('submissionScreen'); } };
+        document.getElementById('searchBtn').onclick = () => { const query = document.getElementById('searchInput').value; if(query) socket.emit('searchSongs', query); };
+        document.getElementById('submitSongBtn').onclick = () => { if(selectedTrack) { socket.emit('submitSong', selectedTrack); document.getElementById('selectedSong').innerHTML = "<h3>Song Submitted! Waiting...</h3>"; document.getElementById('searchResults').classList.add('hidden'); document.getElementById('waitingArea').classList.remove('hidden'); } };
         document.getElementById('startGameBtn').onclick = () => socket.emit('startGame');
-        document.getElementById('submitGuessBtn').onclick = () => {
-            const guess = document.getElementById('guessInput').value;
-            if(guess) socket.emit('submitGuess', guess);
-        };
+        document.getElementById('submitGuessBtn').onclick = () => { const guess = document.getElementById('guessInput').value; if(guess) socket.emit('submitGuess', guess); };
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
-
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-        }
-        function updateLobby(data) {
-            document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0;
-            document.getElementById('totalPlayers').textContent = Object.keys(data.players).length;
-            const list = document.getElementById('playerList');
-            list.innerHTML = '';
-            Object.values(data.players).forEach(p => {
-                const li = document.createElement('li');
-                li.innerHTML = `${p.name} ${p.hasSubmitted ? '✅' : '⏳'}`;
-                list.appendChild(li);
-            });
-        }
-        function updateScores(scores, listId) {
-            const list = document.getElementById(listId);
-            list.innerHTML = '';
-            const sorted = Object.values(scores).sort((a,b) => b.score - a.score);
-            sorted.forEach(p => {
-                const li = document.createElement('li');
-                li.innerHTML = `<span>${p.name}</span> <span>${p.score} pts</span>`;
-                list.appendChild(li);
-            });
-        }
+        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
+        function updateLobby(data) { document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0; document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; const list = document.getElementById('playerList'); list.innerHTML = ''; Object.values(data.players).forEach(p => { const li = document.createElement('li'); li.innerHTML = `${p.name} ${p.hasSubmitted ? '✅' : '⏳'}`; list.appendChild(li); }); }
+        function updateScores(scores, listId) { const list = document.getElementById(listId); list.innerHTML = ''; const sorted = Object.values(scores).sort((a,b) => b.score - a.score); sorted.forEach(p => { const li = document.createElement('li'); li.innerHTML = `<span>${p.name}</span> <span>${p.score} pts</span>`; list.appendChild(li); }); }
     </script>
 </body>
 </html>
