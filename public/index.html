@@ -40,6 +40,7 @@
         .silver { background: linear-gradient(to top, #bdc3c7, #95a5a6); height: 160px; order: 1; }
         .bronze { background: linear-gradient(to top, #cd6133, #d35400); height: 110px; order: 3; }
         #activeSubmitter { font-style: italic; color: #9b59b6; margin-bottom: 10px; }
+        .status-message { color: #e74c3c; margin-top: 10px; font-weight: bold; display: none; }
     </style>
 </head>
 <body>
@@ -50,6 +51,7 @@
             <input type="text" id="playerName" placeholder="Enter your name..." maxlength="15">
             <br><br>
             <button id="joinBtn">Join</button>
+            <div id="loginStatus" class="status-message"></div>
         </div>
         <div class="screen hidden" id="submissionScreen">
             <h2>Pick a Song</h2>
@@ -119,6 +121,15 @@
             updateLobby(data);
             if(data.hostId === myId) document.getElementById('hostControls').classList.remove('hidden');
         });
+        
+        // --- NEW: HANDLE NAME TAKEN ERROR ---
+        socket.on('loginError', (msg) => {
+            const el = document.getElementById('loginStatus');
+            el.textContent = msg;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        });
+
         socket.on('searchResults', (results) => {
             const container = document.getElementById('searchResults');
             container.innerHTML = '';
@@ -150,8 +161,6 @@
                 div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-correct">${data.text}</span>`;
             } else if (data.type === 'winner-chat') {
                 div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-winner">${data.text}</span>`;
-            } else if (data.type === 'system') {
-                div.innerHTML = `<div style="text-align:center; color:#f39c12; margin:5px 0; font-style:italic;">${data.text}</div>`;
             } else {
                 div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-wrong">${data.text}</span>`;
             }
@@ -161,14 +170,11 @@
         socket.on('playTrack', (data) => {
             document.getElementById('questionArea').classList.remove('hidden');
             document.getElementById('revealArea').classList.add('hidden');
-            
-            // --- NEW: DON'T CLEAR CHAT, JUST ADD SEPARATOR ---
             const chatBox = document.getElementById('chatBox');
             const separator = document.createElement('div');
             separator.style.cssText = "text-align: center; opacity: 0.5; margin: 10px 0; font-size: 0.8rem; border-top: 1px solid #333; padding-top: 5px;";
             separator.textContent = `--- Round ${data.trackIndex + 1} ---`;
             chatBox.appendChild(separator);
-            
             document.getElementById('activeSubmitter').textContent = "Picked by: " + data.submitterName;
             const input = document.getElementById('guessInput');
             input.value = '';
@@ -245,14 +251,21 @@
         addEnterKey("playerName", "joinBtn");
         addEnterKey("searchInput", "searchBtn");
         addEnterKey("guessInput", "submitGuessBtn");
-        document.getElementById('joinBtn').onclick = () => { const name = document.getElementById('playerName').value; if(name) { socket.emit('joinGame', name); showScreen('submissionScreen'); } };
+        document.getElementById('joinBtn').onclick = () => { const name = document.getElementById('playerName').value; if(name) { socket.emit('joinGame', name); /* Removed showScreen() here. It waits for playerJoined event */ } };
         document.getElementById('searchBtn').onclick = () => { const query = document.getElementById('searchInput').value; if(query) socket.emit('searchSongs', query); };
         document.getElementById('submitSongBtn').onclick = () => { if(selectedTrack) { socket.emit('submitSong', selectedTrack); document.getElementById('selectedSong').innerHTML = "<h3>Song Submitted! Waiting...</h3>"; document.getElementById('searchResults').classList.add('hidden'); document.getElementById('waitingArea').classList.remove('hidden'); } };
         document.getElementById('startGameBtn').onclick = () => socket.emit('startGame');
         document.getElementById('submitGuessBtn').onclick = () => { const guess = document.getElementById('guessInput').value; if(guess) socket.emit('submitGuess', guess); };
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
-        function updateLobby(data) { document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0; document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; const list = document.getElementById('playerList'); list.innerHTML = ''; Object.values(data.players).forEach(p => { const li = document.createElement('li'); li.innerHTML = `${p.name} ${p.hasSubmitted ? '✅' : '⏳'}`; list.appendChild(li); }); }
+        function updateLobby(data) {
+            // ONLY SHOW SUBMISSION SCREEN ON SUCCESSFUL JOIN
+            const myPlayer = data.players[myId];
+            if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) {
+                 showScreen('submissionScreen');
+            }
+            document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0; document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; const list = document.getElementById('playerList'); list.innerHTML = ''; Object.values(data.players).forEach(p => { const li = document.createElement('li'); li.innerHTML = `${p.name} ${p.hasSubmitted ? '✅' : '⏳'}`; list.appendChild(li); }); 
+        }
         function updateScores(scores, listId) { const list = document.getElementById(listId); list.innerHTML = ''; const sorted = Object.values(scores).sort((a,b) => b.score - a.score); sorted.forEach(p => { const li = document.createElement('li'); li.innerHTML = `<span>${p.name}</span> <span>${p.score} pts</span>`; list.appendChild(li); }); }
     </script>
 </body>
