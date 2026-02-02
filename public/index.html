@@ -152,7 +152,7 @@
 
         /* Color Picker */
         .color-options { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
-        .color-dot { width: 30px; height: 30px; border: 2px solid #000; cursor: pointer; transition: transform 0.2s; } /* Square dots for retro feel? kept round for clarity, but solid border */
+        .color-dot { width: 30px; height: 30px; border: 2px solid #000; cursor: pointer; transition: transform 0.2s; } 
         .color-dot:hover { transform: scale(1.2); border-color: #fff; }
         .color-dot.selected { border: 3px solid #fff; transform: scale(1.1); box-shadow: 0 0 10px #fff; }
         .player-dot { width: 12px; height: 12px; margin-right: 10px; display: inline-block; border: 1px solid #fff; }
@@ -163,12 +163,12 @@
         <h1>🎵 NOT SONGLIO 🎵</h1>
         
         <div class="screen" id="loginScreen">
-            <h2>INSERT COIN (JOIN GAME)</h2>
+            <h2>CHOOSE YOUR CHARACTER</h2>
             <input type="text" id="playerName" placeholder="ENTER NAME..." maxlength="15">
             <p style="margin: 15px 0 5px; font-size: 0.8rem; color: #00ffff;">SELECT COLOR:</p>
             <div class="color-options" id="colorPicker"></div>
             <br>
-            <button id="joinBtn">START</button>
+            <button id="joinBtn">START GAME</button>
             <div id="loginStatus" class="status-message"></div>
         </div>
 
@@ -224,7 +224,7 @@
                 <h3>RANKINGS</h3>
                 <ul id="runnerUpList"></ul>
             </div>
-            <button id="playAgainBtn" class="host-btn" style="margin-top: 20px;">INSERT COIN (REPLAY)</button>
+            <button id="playAgainBtn" class="host-btn" style="margin-top: 20px;">CONTINUE?</button>
         </div>
     </div>
 
@@ -264,221 +264,4 @@
             });
             if (picker.children.length > 0) {
                 picker.children[0].classList.add('selected');
-                myColor = colors[0];
-            }
-        }
-
-        socket.on('connect', () => { myId = socket.id; });
-        socket.on('playerJoined', (data) => {
-            updateLobby(data);
-            if(data.hostId === myId) document.getElementById('hostControls').classList.remove('hidden');
-        });
-        socket.on('loginError', (msg) => { const el = document.getElementById('loginStatus'); el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000); });
-        socket.on('searchResults', (results) => {
-            const container = document.getElementById('searchResults');
-            container.innerHTML = '';
-            container.classList.remove('hidden');
-            results.forEach(track => {
-                const div = document.createElement('div');
-                div.className = 'song-item';
-                div.innerHTML = `<strong>${track.trackName}</strong> - ${track.artistName}`;
-                div.onclick = () => {
-                    selectedTrack = track;
-                    document.getElementById('selectedSong').classList.remove('hidden');
-                    document.getElementById('selTitle').textContent = track.trackName;
-                    document.getElementById('selArtist').textContent = track.artistName;
-                    document.getElementById('previewAudio').src = track.previewUrl;
-                };
-                container.appendChild(div);
-            });
-        });
-        socket.on('songSubmitted', (data) => {
-            updateLobby(data);
-            if(data.isReady) document.getElementById('startGameBtn').disabled = false;
-        });
-        
-        socket.on('gameStarted', (data) => {
-            showScreen('gameScreen');
-            document.getElementById('bottomPanel').classList.remove('hidden');
-        });
-
-        socket.on('chatMessage', (data) => {
-            const chatBox = document.getElementById('chatBox');
-            const div = document.createElement('div');
-            div.className = 'chat-msg';
-            const nameSpan = `<span class="chat-name" style="color: ${data.color || '#00ffff'}">${data.name}:</span>`;
-            if(data.type === 'correct') {
-                div.innerHTML = `${nameSpan} <span class="chat-correct">${data.text}</span>`;
-            } else if (data.type === 'winner-chat') {
-                div.innerHTML = `${nameSpan} <span class="chat-winner">${data.text}</span>`;
-            } else if (data.type === 'dj-chat') {
-                div.innerHTML = `${nameSpan} <span class="chat-dj">${data.text}</span>`;
-            } else {
-                div.innerHTML = `${nameSpan} <span class="chat-wrong">${data.text}</span>`;
-            }
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        });
-
-        socket.on('playTrack', (data) => {
-            document.getElementById('revealArea').classList.add('hidden');
-            const chatBox = document.getElementById('chatBox');
-            const separator = document.createElement('div');
-            separator.style.cssText = "text-align: center; opacity: 0.5; margin: 10px 0; font-size: 0.8rem; border-top: 1px solid #333; padding-top: 5px; color: #ff00ff;";
-            separator.textContent = `--- ROUND ${data.trackIndex + 1} ---`;
-            chatBox.appendChild(separator);
-            document.getElementById('activeSubmitter').textContent = "DJ: " + data.submitterName;
-            const input = document.getElementById('guessInput');
-            input.value = '';
-            input.disabled = false;
-            input.classList.remove('input-winner');
-            input.placeholder = "ENTER GUESS...";
-            input.focus();
-            document.getElementById('guessFeedback').textContent = '';
-            document.getElementById('trackNum').textContent = data.trackIndex + 1;
-            const audio = document.getElementById('gameAudio');
-            audio.src = data.track.previewUrl;
-            audio.volume = 0.5;
-            audio.play().catch(e => console.log("Autoplay blocked"));
-            document.getElementById('countdown').textContent = data.roundCountdown;
-        });
-
-        socket.on('countdown', (t) => document.getElementById('countdown').textContent = t);
-        
-        socket.on('roundEnded', (data) => {
-            document.getElementById('revealArea').classList.remove('hidden');
-            document.getElementById('revealTitle').textContent = data.track.title;
-            document.getElementById('revealArtist').textContent = data.track.artist;
-            document.getElementById('revealSubmitter').textContent = "CHOSEN BY: " + data.submitterName;
-            document.getElementById('albumArt').src = data.track.albumArt || '';
-            document.getElementById('gameAudio').pause();
-            updateScores(data.scores, 'scoreList');
-            const input = document.getElementById('guessInput');
-            input.placeholder = "ROUND OVER. CHAT ENABLED.";
-        });
-
-        socket.on('guessResult', (data) => {
-            const fb = document.getElementById('guessFeedback');
-            const input = document.getElementById('guessInput');
-            if(data.silent) { input.value = ''; input.focus(); return; }
-            if(data.correct) {
-                fb.textContent = `✅ CORRECT! +${data.points}`;
-                fb.className = "guess-correct";
-                input.classList.add('input-winner');
-                input.placeholder = "CHAT MODE ACTIVATED...";
-                input.value = '';
-                input.focus();
-            } else {
-                fb.textContent = data.message ? "⚠️ " + data.message : "❌ INCORRECT";
-                fb.className = "guess-incorrect";
-                input.value = ''; 
-                input.disabled = false;
-                input.focus();
-            }
-        });
-
-        socket.on('gameFinished', (data) => {
-            showScreen('resultsScreen');
-            
-            const duration = 3000;
-            const end = Date.now() + duration;
-            (function frame() {
-                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff00ff', '#00ffff'] });
-                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff00ff', '#00ffff'] });
-                if (Date.now() < end) requestAnimationFrame(frame);
-            }());
-
-            const podium = document.getElementById('podium');
-            const runnerList = document.getElementById('runnerUpList');
-            podium.innerHTML = '';
-            runnerList.innerHTML = '';
-            const allPlayers = Object.values(data.scores).sort((a,b) => b.score - a.score);
-            const top3 = allPlayers.slice(0, 3);
-            
-            const createPillar = (player, rankClass, rankNum) => {
-                if(!player) return;
-                const div = document.createElement('div');
-                div.className = `pillar ${rankClass}`;
-                div.innerHTML = `<div class="pillar-name" style="color:${player.color}">${player.name}</div><div class="rank-label">${rankNum}</div><div class="pillar-score">${player.score}</div>`;
-                podium.appendChild(div);
-            };
-            createPillar(top3[1], 'silver', '2ND');
-            createPillar(top3[0], 'gold', '1ST');
-            createPillar(top3[2], 'bronze', '3RD');
-            
-            const rest = allPlayers.slice(3);
-            if(rest.length === 0) { document.getElementById('runnerUps').classList.add('hidden'); } 
-            else { document.getElementById('runnerUps').classList.remove('hidden'); rest.forEach((p, index) => { 
-                const li = document.createElement('li'); 
-                li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>#${index + 4} ${p.name}</span> <span>${p.score} PTS</span>`; 
-                runnerList.appendChild(li); 
-            }); }
-        });
-        
-        socket.on('playAgainStarted', () => location.reload());
-
-        function addEnterKey(inputId, btnId) {
-            const input = document.getElementById(inputId);
-            if(input) { input.addEventListener("keypress", function(event) { if (event.key === "Enter") { event.preventDefault(); document.getElementById(btnId).click(); } }); }
-        }
-        addEnterKey("playerName", "joinBtn");
-        addEnterKey("searchInput", "searchBtn");
-        addEnterKey("guessInput", "submitGuessBtn");
-        
-        document.getElementById('joinBtn').onclick = () => { 
-            const name = document.getElementById('playerName').value; 
-            if(name) { socket.emit('joinGame', { name: name, color: myColor }); } 
-        };
-        
-        document.getElementById('searchBtn').onclick = () => { const query = document.getElementById('searchInput').value; if(query) socket.emit('searchSongs', query); };
-        document.getElementById('submitSongBtn').onclick = () => { if(selectedTrack) { socket.emit('submitSong', selectedTrack); document.getElementById('selectedSong').innerHTML = "<h3>TRACK CONFIRMED</h3>"; document.getElementById('searchResults').classList.add('hidden'); document.getElementById('waitingArea').classList.remove('hidden'); } };
-        document.getElementById('startGameBtn').onclick = () => socket.emit('startGame');
-        document.getElementById('submitGuessBtn').onclick = () => { const guess = document.getElementById('guessInput').value; if(guess) socket.emit('submitGuess', guess); };
-        document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
-        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
-        
-        function updateLobby(data) {
-            const myPlayer = data.players[myId];
-            if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) { showScreen('submissionScreen'); }
-            
-            document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0; 
-            document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; 
-            
-            const list = document.getElementById('playerList'); 
-            list.innerHTML = ''; 
-            
-            const amIHost = (myId === data.hostId);
-
-            Object.values(data.players).forEach(p => { 
-                const li = document.createElement('li'); 
-                
-                let html = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span>`;
-                
-                if (amIHost && p.id !== myId) {
-                    html += `<div style="display:flex; align-items:center; gap:10px;">${p.hasSubmitted ? '✅' : '⏳'}<button class="danger-btn" onclick="kickPlayer('${p.id}')">❌</button></div>`;
-                } else {
-                    html += `${p.hasSubmitted ? '✅' : '⏳'}`;
-                }
-                
-                li.innerHTML = html;
-                list.appendChild(li); 
-            }); 
-        }
-        
-        function updateScores(scores, listId) { 
-            const list = document.getElementById(listId); list.innerHTML = ''; const sorted = Object.values(scores).sort((a,b) => b.score - a.score); 
-            sorted.forEach(p => { 
-                const li = document.createElement('li'); 
-                li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span> <span>${p.score} PTS</span>`; 
-                list.appendChild(li); 
-            }); 
-        }
-
-        window.kickPlayer = function(id) {
-            if(confirm("EJECT PLAYER?")) {
-                socket.emit('kickPlayer', id);
-            }
-        };
-    </script>
-</body>
-</html>
+                myColor = colors
