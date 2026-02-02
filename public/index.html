@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Office Music Trivia - Crowdsourced Playlist</title>
+    <title>Not Songlio</title>
     <style>
         * {
             box-sizing: border-box;
@@ -44,66 +44,50 @@
             margin-bottom: 10px;
         }
         
-        .main-content {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 25px;
-        }
-        
-        .panel {
+        .screen {
             background-color: rgba(30, 30, 46, 0.9);
             border-radius: 12px;
-            padding: 20px;
+            padding: 30px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
             border: 1px solid #444;
-            flex: 1;
+            max-width: 800px;
+            margin: 0 auto;
         }
         
-        .left-panel {
-            min-width: 300px;
-            max-width: 400px;
-        }
-        
-        .right-panel {
-            min-width: 300px;
-            flex: 2;
+        .hidden {
+            display: none !important;
         }
         
         h2 {
             color: #2ecc71;
-            margin-bottom: 15px;
-            font-size: 1.6rem;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
             border-bottom: 1px solid #444;
-            padding-bottom: 8px;
+            padding-bottom: 10px;
         }
         
         h3 {
             color: #f39c12;
-            margin: 12px 0 8px;
-            font-size: 1.2rem;
-        }
-        
-        /* Lobby Styles */
-        #lobby {
-            text-align: center;
+            margin: 15px 0 10px;
+            font-size: 1.3rem;
         }
         
         .input-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             text-align: left;
         }
         
         label {
             display: block;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             color: #ddd;
             font-weight: 500;
         }
         
         input, select {
             width: 100%;
-            padding: 10px 12px;
-            border-radius: 6px;
+            padding: 12px 15px;
+            border-radius: 8px;
             border: 2px solid #444;
             background-color: #222;
             color: white;
@@ -119,13 +103,13 @@
             background-color: #3498db;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
+            padding: 12px 24px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 1rem;
             font-weight: 600;
             transition: all 0.3s ease;
-            margin: 4px;
+            margin: 5px;
         }
         
         button:hover {
@@ -156,29 +140,25 @@
             background-color: #8e44ad;
         }
         
-        /* Game Controls */
-        #gameControls {
-            display: none;
+        button.danger-btn {
+            background-color: #e74c3c;
         }
         
-        .controls {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 12px;
+        button.danger-btn:hover:not(:disabled) {
+            background-color: #c0392b;
         }
         
         /* Player List */
         #playerList {
             list-style-type: none;
-            margin-top: 12px;
+            margin: 20px 0;
         }
         
         #playerList li {
             background-color: #222;
-            padding: 10px 12px;
-            margin-bottom: 8px;
-            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -195,40 +175,37 @@
         
         .player-name {
             font-weight: bold;
+            font-size: 1.1rem;
         }
         
         .player-status {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: #bbb;
-            margin-left: 8px;
+            margin-left: 10px;
         }
         
         .player-score {
             color: #f39c12;
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
         }
         
-        /* Submission Area */
-        #submissionArea {
-            display: none;
-        }
-        
+        /* Search Results */
         .search-results {
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
-            margin-top: 12px;
+            margin: 20px 0;
             border: 1px solid #444;
-            border-radius: 6px;
-            padding: 8px;
+            border-radius: 8px;
+            padding: 15px;
             background-color: #222;
         }
         
         .song-item {
-            padding: 10px;
-            margin-bottom: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
             background-color: #2a2a3a;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s;
             border-left: 3px solid transparent;
@@ -246,37 +223,54 @@
         .song-title {
             font-weight: bold;
             color: #f39c12;
-            font-size: 1rem;
+            font-size: 1.1rem;
         }
         
         .song-artist {
             color: #3498db;
+            font-size: 0.95rem;
+            margin-top: 5px;
+        }
+        
+        .song-album {
+            color: #95a5a6;
             font-size: 0.85rem;
             margin-top: 3px;
         }
         
-        /* Game Area */
-        .game-info {
+        /* Preview Player */
+        .preview-player {
+            margin: 20px 0;
+            padding: 15px;
             background-color: #222;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 15px;
+            border-radius: 8px;
             text-align: center;
+        }
+        
+        .preview-player audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        /* Game Area */
+        .game-area {
+            text-align: center;
+            margin: 20px 0;
         }
         
         .track-info {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 20px;
-            margin-top: 15px;
+            gap: 30px;
+            margin: 20px 0;
             flex-wrap: wrap;
         }
         
         .album-art {
-            width: 120px;
-            height: 120px;
-            border-radius: 10px;
+            width: 150px;
+            height: 150px;
+            border-radius: 12px;
             background-color: #333;
             display: flex;
             align-items: center;
@@ -293,58 +287,58 @@
         
         .album-art .placeholder {
             color: #777;
-            font-size: 2.5rem;
+            font-size: 3rem;
         }
         
         .track-details {
             text-align: left;
             flex: 1;
-            min-width: 200px;
+            min-width: 300px;
         }
         
         #trackTitle, #trackArtist, #submitterName {
-            margin-bottom: 5px;
+            margin-bottom: 10px;
         }
         
         #trackTitle {
             color: #f39c12;
-            font-size: 1.4rem;
+            font-size: 1.8rem;
             font-weight: bold;
         }
         
         #trackArtist {
             color: #3498db;
-            font-size: 1.2rem;
+            font-size: 1.4rem;
         }
         
         #submitterName {
             color: #9b59b6;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             font-style: italic;
         }
         
         /* Countdown */
         #countdown {
-            font-size: 2.8rem;
+            font-size: 3.5rem;
             font-weight: bold;
             text-align: center;
-            margin: 15px 0;
+            margin: 20px 0;
             color: #e74c3c;
             text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
         
         /* Guessing Area */
-        #guessingArea {
-            display: none;
+        .guessing-area {
+            margin: 30px 0;
             text-align: center;
-            margin-top: 15px;
         }
         
         .guess-result {
-            margin-top: 12px;
-            padding: 12px;
-            border-radius: 6px;
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
             font-weight: bold;
+            font-size: 1.1rem;
         }
         
         .guess-correct {
@@ -361,7 +355,7 @@
         
         /* Scoreboard */
         #scoreboard {
-            margin-top: 20px;
+            margin-top: 30px;
         }
         
         #scoreList {
@@ -370,9 +364,9 @@
         
         #scoreList li {
             background-color: #222;
-            padding: 12px;
-            margin-bottom: 8px;
-            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -386,29 +380,30 @@
         .score-rank {
             font-weight: bold;
             color: #f39c12;
-            width: 30px;
+            width: 40px;
             text-align: center;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
         }
         
         .score-player {
             flex: 1;
-            padding: 0 12px;
+            padding: 0 15px;
             font-weight: 500;
+            font-size: 1.1rem;
         }
         
         .score-value {
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             color: #2ecc71;
         }
         
         /* Status Messages */
         .status-message {
             text-align: center;
-            padding: 12px;
-            border-radius: 6px;
-            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
             display: none;
         }
         
@@ -430,73 +425,13 @@
             border: 1px solid rgba(46, 204, 113, 0.3);
         }
         
-        /* Waiting Message */
-        #waitingMessage {
-            text-align: center;
-            padding: 30px 20px;
-        }
-        
-        /* Results Screen */
-        #resultsScreen {
-            display: none;
-            text-align: center;
-        }
-        
-        .result-track {
-            background-color: #222;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            text-align: left;
-        }
-        
-        .result-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .result-album-art {
-            width: 70px;
-            height: 70px;
-            border-radius: 6px;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-        
-        .result-album-art img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .result-details h4 {
-            color: #f39c12;
-            font-size: 1.1rem;
-            margin-bottom: 3px;
-        }
-        
-        .result-details p {
-            color: #3498db;
-            margin-bottom: 3px;
-            font-size: 0.95rem;
-        }
-        
-        .submitter-info {
-            color: #9b59b6;
-            font-style: italic;
-            font-size: 0.9rem;
-        }
-        
         /* Progress Bar */
         .progress-container {
             width: 100%;
-            height: 8px;
+            height: 10px;
             background-color: #333;
-            border-radius: 4px;
-            margin: 15px 0;
+            border-radius: 5px;
+            margin: 20px 0;
             overflow: hidden;
         }
         
@@ -507,22 +442,45 @@
             transition: width 0.3s ease;
         }
         
+        /* Host Controls */
+        .host-controls {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: rgba(46, 204, 113, 0.1);
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        /* Waiting List */
+        .waiting-list {
+            margin: 15px 0;
+            padding: 15px;
+            background-color: rgba(52, 152, 219, 0.1);
+            border-radius: 8px;
+        }
+        
+        /* Game Audio (Hidden) */
+        #gameAudio {
+            display: none;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
-            .main-content {
-                flex-direction: column;
-            }
-            
-            .left-panel, .right-panel {
-                max-width: 100%;
+            .screen {
+                padding: 20px;
             }
             
             h1 {
                 font-size: 2rem;
             }
             
-            .panel {
-                padding: 15px;
+            .track-info {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .track-details {
+                text-align: center;
             }
         }
     </style>
@@ -533,64 +491,610 @@
             <h1>🎵 Office Music Trivia 🎵</h1>
             <p class="tagline">Crowdsourced Playlist Game - Everyone contributes a song!</p>
         </header>
+
+        <!-- Login Screen -->
+        <div class="screen" id="loginScreen">
+            <h2>Join the Game</h2>
+            <div class="input-group">
+                <label for="playerName">Enter Your Name</label>
+                <input type="text" id="playerName" placeholder="Your name (e.g., Alex, Taylor, Sam)" maxlength="20" autocomplete="off">
+            </div>
+            <button id="joinBtn">Join Game</button>
+            
+            <div id="loginStatus" class="status-message"></div>
+            
+            <div style="margin-top: 30px; color: #95a5a6; font-size: 0.9rem;">
+                <p><strong>How to play:</strong></p>
+                <ol style="text-align: left; margin: 15px 0; padding-left: 20px; line-height: 1.6;">
+                    <li>Enter your name to join</li>
+                    <li>Search for and submit a song</li>
+                    <li>When everyone has submitted, the host starts the game</li>
+                    <li>Listen to each song and guess the title or artist</li>
+                    <li>Earn points for correct guesses and when your song is guessed</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Submission Screen -->
+        <div class="screen hidden" id="submissionScreen">
+            <h2>Submit Your Song</h2>
+            <p style="margin-bottom: 20px; color: #ddd;">Search for a song to add to the playlist. Choose something others might recognize!</p>
+            
+            <div class="input-group">
+                <label for="searchInput">Search iTunes Music</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="searchInput" placeholder="Search for a song or artist..." autocomplete="off">
+                    <button id="searchBtn">Search</button>
+                </div>
+            </div>
+            
+            <div id="searchResults" class="search-results hidden">
+                <h3>Search Results</h3>
+                <div id="songsList"></div>
+            </div>
+            
+            <div id="selectedSong" class="hidden">
+                <h3>Your Selection</h3>
+                <div class="song-item selected">
+                    <div class="song-title" id="selectedSongTitle"></div>
+                    <div class="song-artist" id="selectedSongArtist"></div>
+                    <div class="song-album" id="selectedSongAlbum"></div>
+                </div>
+                
+                <div class="preview-player">
+                    <p>Preview (30 seconds):</p>
+                    <audio id="previewAudio" controls>
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+                
+                <button id="submitSongBtn" class="submit-btn">Submit This Song</button>
+            </div>
+            
+            <div id="waitingForPlayers" class="waiting-list hidden">
+                <h3>Waiting for Players</h3>
+                <p>Songs submitted: <span id="submittedCount">0</span>/<span id="totalPlayers">0</span></p>
+                <div class="progress-container">
+                    <div class="progress-bar" id="submissionProgress"></div>
+                </div>
+                <div id="waitingList"></div>
+                <p style="margin-top: 15px; color: #95a5a6;"><em>Waiting for host to start the game...</em></p>
+            </div>
+            
+            <div id="submissionStatus" class="status-message"></div>
+            
+            <div class="host-controls hidden" id="hostControls">
+                <h3>Host Controls</h3>
+                <button id="startGameBtn" class="host-btn" disabled>Start Game</button>
+                <button id="resetGameBtn" class="danger-btn">Reset Game</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button id="backToLobbyBtn">← Back to Lobby</button>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div class="screen hidden" id="gameScreen">
+            <h2>Music Trivia Round</h2>
+            
+            <div class="progress-container">
+                <div class="progress-bar" id="gameProgress"></div>
+            </div>
+            <p style="margin: 10px 0;">Track: <span id="currentTrackNum">1</span>/<span id="totalTracks">?</span></p>
+            
+            <div id="countdown">15</div>
+            
+            <div class="track-info">
+                <div class="album-art">
+                    <div class="placeholder">🎵</div>
+                    <img id="albumArt" src="" alt="Album Art" class="hidden">
+                </div>
+                <div class="track-details">
+                    <div id="trackTitle">???</div>
+                    <div id="trackArtist">???</div>
+                    <div id="submitterName" class="hidden">Picked by: ???</div>
+                </div>
+            </div>
+            
+            <div class="guessing-area" id="guessingArea">
+                <div class="input-group">
+                    <label for="guessInput">Your Guess (song title or artist)</label>
+                    <input type="text" id="guessInput" placeholder="Type your guess here..." autocomplete="off">
+                    <p style="margin-top: 5px; color: #95a5a6; font-size: 0.9rem;">Close matches and typos are accepted!</p>
+                </div>
+                <button id="submitGuessBtn">Submit Guess</button>
+                <div id="guessResult" class="guess-result"></div>
+            </div>
+            
+            <!-- Hidden audio player for game -->
+            <audio id="gameAudio" controls>
+                Your browser does not support the audio element.
+            </audio>
+            
+            <div id="gameStatus" class="status-message"></div>
+            
+            <div id="scoreboard">
+                <h3>🏆 Scoreboard</h3>
+                <ul id="scoreList"></ul>
+            </div>
+            
+            <div class="host-controls hidden" id="gameHostControls">
+                <h3>Host Controls</h3>
+                <button id="pauseBtn">⏸️ Pause</button>
+                <button id="resumeBtn">▶️ Resume</button>
+                <button id="skipBtn">⏭️ Skip Track</button>
+                <button id="endGameBtn" class="danger-btn">End Game</button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div class="screen hidden" id="resultsScreen">
+            <h2>Game Results</h2>
+            
+            <div id="finalResults">
+                <h3>Final Scores</h3>
+                <ul id="finalScoreList"></ul>
+            </div>
+            
+            <div id="playlistResults" style="margin-top: 30px;">
+                <h3>Playlist Summary</h3>
+                <div id="playlistSummary"></div>
+            </div>
+            
+            <div class="host-controls" style="margin-top: 30px;">
+                <button id="playAgainBtn" class="host-btn">Play Again</button>
+                <button id="newGameBtn" class="danger-btn">New Game</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Socket.io Library -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <script>
+        // Initialize Socket.io connection
+        let socket = null;
+        let playerId = null;
+        let isHost = false;
+        let selectedSong = null;
+        let gameAudio = null;
         
-        <div class="main-content">
-            <div class="left-panel">
-                <!-- Lobby Section -->
-                <div class="panel" id="lobby">
-                    <h2>Join Game</h2>
-                    <div class="input-group">
-                        <label for="playerName">Your Name</label>
-                        <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
-                    </div>
-                    <button id="joinBtn">Join Game</button>
-                    
-                    <div id="playerStatus" style="display: none;">
-                        <h3>Players in Lobby</h3>
-                        <ul id="playerList"></ul>
-                    </div>
-                </div>
+        // DOM Elements
+        const screens = {
+            login: document.getElementById('loginScreen'),
+            submission: document.getElementById('submissionScreen'),
+            game: document.getElementById('gameScreen'),
+            results: document.getElementById('resultsScreen')
+        };
+        
+        // Login Screen
+        const playerNameInput = document.getElementById('playerName');
+        const joinBtn = document.getElementById('joinBtn');
+        const loginStatus = document.getElementById('loginStatus');
+        
+        // Submission Screen
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const searchResults = document.getElementById('searchResults');
+        const songsList = document.getElementById('songsList');
+        const selectedSongDiv = document.getElementById('selectedSong');
+        const selectedSongTitle = document.getElementById('selectedSongTitle');
+        const selectedSongArtist = document.getElementById('selectedSongArtist');
+        const selectedSongAlbum = document.getElementById('selectedSongAlbum');
+        const previewAudio = document.getElementById('previewAudio');
+        const submitSongBtn = document.getElementById('submitSongBtn');
+        const waitingForPlayers = document.getElementById('waitingForPlayers');
+        const submittedCount = document.getElementById('submittedCount');
+        const totalPlayers = document.getElementById('totalPlayers');
+        const submissionProgress = document.getElementById('submissionProgress');
+        const waitingList = document.getElementById('waitingList');
+        const submissionStatus = document.getElementById('submissionStatus');
+        const hostControls = document.getElementById('hostControls');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const resetGameBtn = document.getElementById('resetGameBtn');
+        const backToLobbyBtn = document.getElementById('backToLobbyBtn');
+        
+        // Game Screen
+        const gameProgress = document.getElementById('gameProgress');
+        const currentTrackNum = document.getElementById('currentTrackNum');
+        const totalTracks = document.getElementById('totalTracks');
+        const countdown = document.getElementById('countdown');
+        const albumArt = document.getElementById('albumArt');
+        const trackTitle = document.getElementById('trackTitle');
+        const trackArtist = document.getElementById('trackArtist');
+        const submitterName = document.getElementById('submitterName');
+        const guessInput = document.getElementById('guessInput');
+        const submitGuessBtn = document.getElementById('submitGuessBtn');
+        const guessResult = document.getElementById('guessResult');
+        const gameAudioElement = document.getElementById('gameAudio');
+        const gameStatus = document.getElementById('gameStatus');
+        const scoreList = document.getElementById('scoreList');
+        const gameHostControls = document.getElementById('gameHostControls');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const skipBtn = document.getElementById('skipBtn');
+        const endGameBtn = document.getElementById('endGameBtn');
+        
+        // Results Screen
+        const finalScoreList = document.getElementById('finalScoreList');
+        const playlistSummary = document.getElementById('playlistSummary');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const newGameBtn = document.getElementById('newGameBtn');
+        
+        // Show screen helper function
+        function showScreen(screenName) {
+            Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+            screens[screenName].classList.remove('hidden');
+        }
+        
+        // Show status message
+        function showStatus(element, message, type = 'info') {
+            element.textContent = message;
+            element.className = `status-message status-${type}`;
+            element.style.display = 'block';
+            
+            if (type !== 'error') {
+                setTimeout(() => {
+                    element.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        // Initialize the game
+        function initGame() {
+            // Initialize socket connection
+            socket = io();
+            
+            // Socket event handlers
+            socket.on('connect', () => {
+                playerId = socket.id;
+                console.log('Connected to server with ID:', playerId);
+                showStatus(loginStatus, 'Connected to server!', 'success');
+            });
+            
+            socket.on('disconnect', () => {
+                showStatus(loginStatus, 'Disconnected from server. Please refresh.', 'error');
+            });
+            
+            socket.on('gameState', (state) => {
+                console.log('Game state received:', state.gamePhase);
+                updateGameUI(state);
+            });
+            
+            socket.on('playerJoined', (data) => {
+                updatePlayerList(data.players, data.hostId);
+                updateScoreboard(data.scores);
                 
-                <!-- Submission Area -->
-                <div class="panel" id="submissionArea">
-                    <h2>Submit a Song</h2>
-                    <p>Search for a song to add to the playlist. Pick something others might know!</p>
-                    
-                    <div class="input-group">
-                        <label for="searchInput">Search for a Song</label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" id="searchInput" placeholder="e.g., 'Bohemian Rhapsody', 'Taylor Swift'">
-                            <button id="searchBtn">Search</button>
-                        </div>
-                    </div>
-                    
-                    <div id="searchResults" class="search-results" style="display: none;">
-                        <h4 style="margin-bottom: 8px; color: #ddd;">Select a Song:</h4>
-                        <div id="songsList"></div>
-                    </div>
-                    
-                    <div id="selectedSong" style="display: none; margin-top: 15px;">
-                        <h4 style="color: #9b59b6;">Your Selection:</h4>
-                        <div class="song-item selected">
-                            <div class="song-title" id="selectedSongTitle"></div>
-                            <div class="song-artist" id="selectedSongArtist"></div>
-                        </div>
-                        <button id="submitSongBtn" class="submit-btn" style="margin-top: 12px; width: 100%;">Submit This Song</button>
-                    </div>
-                    
-                    <div id="waitingForPlayers" style="margin-top: 15px; padding: 12px; background-color: rgba(52, 152, 219, 0.1); border-radius: 6px;">
-                        <h4 style="color: #3498db; margin-bottom: 8px;">Waiting for players to submit:</h4>
-                        <div id="waitingList"></div>
-                    </div>
-                </div>
+                if (playerId === data.hostId) {
+                    isHost = true;
+                    hostControls.classList.remove('hidden');
+                    gameHostControls.classList.remove('hidden');
+                }
+            });
+            
+            socket.on('songSubmitted', (data) => {
+                updateWaitingList(data);
+                showStatus(submissionStatus, `${data.playerName} submitted a song!`, 'info');
+            });
+            
+            socket.on('allSongsSubmitted', () => {
+                startGameBtn.disabled = false;
+                showStatus(submissionStatus, 'All players have submitted! Ready to start.', 'success');
+            });
+            
+            socket.on('gameStarted', (data) => {
+                showScreen('game');
+                showStatus(gameStatus, `Game started by ${data.host}! First track starting...`, 'success');
+                totalTracks.textContent = data.trackCount;
+            });
+            
+            socket.on('playTrack', (data) => {
+                currentTrackNum.textContent = data.trackIndex + 1;
+                totalTracks.textContent = data.totalTracks;
                 
-                <!-- Game Controls (Host only) -->
-                <div class="panel" id="gameControls">
-                    <h2>Host Controls</h2>
-                    <p>You are the host! Start the game when everyone has submitted a song.</p>
+                // Update progress bar
+                const progress = ((data.trackIndex) / data.totalTracks) * 100;
+                gameProgress.style.width = `${progress}%`;
+                
+                // Reset UI
+                trackTitle.textContent = '???';
+                trackArtist.textContent = '???';
+                submitterName.classList.add('hidden');
+                albumArt.classList.add('hidden');
+                albumArt.src = '';
+                document.querySelector('.album-art .placeholder').style.display = 'block';
+                
+                // Set album art (hidden initially)
+                if (data.track.albumArt) {
+                    albumArt.src = data.track.albumArt;
+                }
+                
+                // Set up audio player
+                gameAudioElement.src = data.track.previewUrl;
+                gameAudioElement.volume = 0.5; // Set volume to 50%
+                
+                // Play audio
+                gameAudioElement.play().catch(e => {
+                    console.log('Auto-play prevented:', e);
+                    showStatus(gameStatus, 'Click anywhere to start audio playback', 'info');
                     
-                    <div id="submissionStatus" style="margin-bottom: 15px;">
-                        <p>Songs submitted: <span id="submittedCount">0</span>/<span id="totalPlayers">0</span></p>
-                        <div class="progress-container">
-                            <div class="progress-bar" id="submissionProgress"></div>
-                       
+                    const startAudio = () => {
+                        gameAudioElement.play();
+                        document.removeEventListener('click', startAudio);
+                    };
+                    document.addEventListener('click', startAudio);
+                });
+                
+                // Show guessing area
+                document.getElementById('guessingArea').style.display = 'block';
+                guessInput.disabled = false;
+                guessInput.value = '';
+                guessInput.focus();
+                submitGuessBtn.disabled = false;
+                guessResult.textContent = '';
+                guessResult.className = 'guess-result';
+                
+                // Update countdown
+                countdown.textContent = data.roundCountdown;
+            });
+            
+            socket.on('countdown', (timeLeft) => {
+                countdown.textContent = timeLeft;
+                
+                if (timeLeft <= 3) {
+                    countdown.style.color = '#e74c3c';
+                } else if (timeLeft <= 7) {
+                    countdown.style.color = '#f39c12';
+                } else {
+                    countdown.style.color = '#2ecc71';
+                }
+            });
+            
+            socket.on('roundEnded', (data) => {
+                // Reveal the answer
+                trackTitle.textContent = data.track.title;
+                trackArtist.textContent = data.track.artist;
+                submitterName.textContent = `Picked by: ${data.submitterName}`;
+                submitterName.classList.remove('hidden');
+                
+                // Show album art
+                if (data.track.albumArt) {
+                    albumArt.src = data.track.albumArt;
+                    albumArt.classList.remove('hidden');
+                    document.querySelector('.album-art .placeholder').style.display = 'none';
+                }
+                
+                // Hide guessing area
+                document.getElementById('guessingArea').style.display = 'none';
+                
+                // Pause audio
+                gameAudioElement.pause();
+                
+                // Update scoreboard
+                updateScoreboard(data.scores);
+                
+                // Show round result
+                let resultMessage = `The song was "${data.track.title}" by ${data.track.artist}`;
+                if (data.submitterBonus > 0) {
+                    resultMessage += ` (${data.submitterName} earned ${data.submitterBonus} bonus points!)`;
+                }
+                showStatus(gameStatus, resultMessage, 'info');
+            });
+            
+            socket.on('guessResult', (data) => {
+                if (data.correct) {
+                    guessResult.textContent = `✅ Correct! +${data.points} points!`;
+                    guessResult.className = 'guess-result guess-correct';
+                    guessInput.disabled = true;
+                    submitGuessBtn.disabled = true;
+                    showStatus(gameStatus, `You guessed it! "${data.songTitle}" by ${data.artist}`, 'success');
+                } else {
+                    guessResult.textContent = `❌ ${data.message || 'Incorrect!'}`;
+                    guessResult.className = 'guess-result guess-incorrect';
+                }
+            });
+            
+            socket.on('scoreUpdate', (data) => {
+                updateScoreboard(data.scores);
+            });
+            
+            socket.on('gameFinished', (data) => {
+                showFinalResults(data.scores);
+                showScreen('results');
+            });
+            
+            socket.on('playAgainStarted', () => {
+                showScreen('submission');
+                selectedSong = null;
+                selectedSongDiv.classList.add('hidden');
+                searchResults.classList.add('hidden');
+                waitingForPlayers.classList.remove('hidden');
+                showStatus(submissionStatus, 'New game started! Submit a song.', 'info');
+            });
+            
+            socket.on('gameReset', () => {
+                showScreen('login');
+                playerNameInput.value = '';
+                selectedSong = null;
+                isHost = false;
+                showStatus(loginStatus, 'Game has been reset. You can join again.', 'info');
+            });
+            
+            socket.on('error', (message) => {
+                const currentScreen = Object.keys(screens).find(key => !screens[key].classList.contains('hidden'));
+                if (currentScreen === 'login') {
+                    showStatus(loginStatus, message, 'error');
+                } else if (currentScreen === 'submission') {
+                    showStatus(submissionStatus, message, 'error');
+                } else if (currentScreen === 'game') {
+                    showStatus(gameStatus, message, 'error');
+                }
+            });
+            
+            socket.on('searchResults', (tracks) => {
+                displaySearchResults(tracks);
+            });
+            
+            // Event Listeners
+            joinBtn.addEventListener('click', () => {
+                const name = playerNameInput.value.trim();
+                if (name.length < 1) {
+                    showStatus(loginStatus, 'Please enter your name', 'error');
+                    return;
+                }
+                if (name.length > 20) {
+                    showStatus(loginStatus, 'Name must be 20 characters or less', 'error');
+                    return;
+                }
+                
+                socket.emit('joinGame', name);
+            });
+            
+            searchBtn.addEventListener('click', () => {
+                const term = searchInput.value.trim();
+                if (term.length < 2) {
+                    showStatus(submissionStatus, 'Please enter at least 2 characters', 'error');
+                    return;
+                }
+                
+                socket.emit('searchSongs', term);
+            });
+            
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchBtn.click();
+                }
+            });
+            
+            submitSongBtn.addEventListener('click', () => {
+                if (!selectedSong) {
+                    showStatus(submissionStatus, 'Please select a song first', 'error');
+                    return;
+                }
+                
+                socket.emit('submitSong', selectedSong);
+                submitSongBtn.disabled = true;
+                submitSongBtn.textContent = 'Submitted!';
+                showStatus(submissionStatus, 'Song submitted! Waiting for other players...', 'success');
+            });
+            
+            startGameBtn.addEventListener('click', () => {
+                socket.emit('startGame');
+                startGameBtn.disabled = true;
+            });
+            
+            resetGameBtn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to reset the game? All progress will be lost.')) {
+                    socket.emit('resetGame');
+                }
+            });
+            
+            backToLobbyBtn.addEventListener('click', () => {
+                if (confirm('Leave the game and return to lobby?')) {
+                    window.location.reload();
+                }
+            });
+            
+            submitGuessBtn.addEventListener('click', () => {
+                const guess = guessInput.value.trim();
+                if (!guess) {
+                    showStatus(gameStatus, 'Please enter a guess', 'error');
+                    return;
+                }
+                
+                socket.emit('submitGuess', guess);
+            });
+            
+            guessInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    submitGuessBtn.click();
+                }
+            });
+            
+            pauseBtn.addEventListener('click', () => {
+                gameAudioElement.pause();
+                socket.emit('controlPlayback', 'pause');
+            });
+            
+            resumeBtn.addEventListener('click', () => {
+                gameAudioElement.play().catch(e => console.log('Playback error:', e));
+                socket.emit('controlPlayback', 'resume');
+            });
+            
+            skipBtn.addEventListener('click', () => {
+                if (confirm('Skip to next track?')) {
+                    socket.emit('controlPlayback', 'skip');
+                }
+            });
+            
+            endGameBtn.addEventListener('click', () => {
+                if (confirm('End the game early?')) {
+                    socket.emit('resetGame');
+                }
+            });
+            
+            playAgainBtn.addEventListener('click', () => {
+                socket.emit('playAgain');
+            });
+            
+            newGameBtn.addEventListener('click', () => {
+                if (confirm('Start a completely new game?')) {
+                    socket.emit('resetGame');
+                }
+            });
+            
+            // Set volume for preview audio
+            previewAudio.volume = 0.5;
+        }
+        
+        // Update game UI based on state
+        function updateGameUI(state) {
+            if (state.gamePhase === 'lobby') {
+                showScreen('login');
+            } else if (state.gamePhase === 'submission' || state.gamePhase === 'ready') {
+                showScreen('submission');
+                updatePlayerList(Object.values(state.players), state.hostId);
+                updateWaitingList({
+                    submittedCount: state.submittedPlayers ? state.submittedPlayers.size : 0,
+                    totalPlayers: Object.keys(state.players).length
+                });
+                
+                // Check if current player has submitted
+                const currentPlayer = state.players[playerId];
+                if (currentPlayer && currentPlayer.hasSubmitted) {
+                    selectedSongDiv.classList.add('hidden');
+                    waitingForPlayers.classList.remove('hidden');
+                    submitSongBtn.disabled = true;
+                    submitSongBtn.textContent = 'Already Submitted';
+                }
+                
+                if (state.gamePhase === 'ready' && isHost) {
+                    startGameBtn.disabled = false;
+                }
+            } else if (state.gamePhase === 'playing') {
+                showScreen('game');
+            } else if (state.gamePhase === 'results') {
+                showScreen('results');
+            }
+        }
+        
+        // Update player list
+        function updatePlayerList(players, hostId) {
+            const playerList = document.getElementById('playerList');
+            if (!playerList) return;
+            
+            playerList.innerHTML = '';
+            
+            players.forEach(player => {
+                const li = document.createElement('li');
+                li.className = player.id === hostId ? 'host' : '';
+                if (player.hasSubmitted) {
+                    li.classList.add('submitted');
+                }
+                
+                li.innerHTML = `
+                    <div>
+                        <span class="player-name">${player.name}</span>
+                        <span class="player-status">
+                            ${player.id === hostId ?
