@@ -66,10 +66,7 @@
             <input type="text" id="playerName" placeholder="Enter your name..." maxlength="15">
             
             <p style="margin: 15px 0 5px; font-size: 0.9rem; color: #ccc;">Choose your color:</p>
-            <div class="color-options" id="colorPicker">
-                </div>
-
-            <br>
+            <div class="color-options" id="colorPicker"></div> <br>
             <button id="joinBtn">Join</button>
             <div id="loginStatus" class="status-message"></div>
         </div>
@@ -145,10 +142,11 @@
         let selectedTrack = null;
         let myColor = '#3498db'; // Default
 
-        // SETUP COLOR PICKER
+        // SETUP COLOR PICKER (Fixed)
         const colors = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#1abc9c', '#3498db', '#9b59b6', '#ff7979'];
         const picker = document.getElementById('colorPicker');
         
+        picker.innerHTML = ''; // Clean slate to prevent bugs
         colors.forEach(c => {
             const dot = document.createElement('div');
             dot.className = 'color-dot';
@@ -160,10 +158,8 @@
             };
             picker.appendChild(dot);
         });
-        // Select first by default
-        picker.firstChild.classList.add('selected');
+        if(picker.firstElementChild) picker.firstElementChild.classList.add('selected');
         myColor = colors[0];
-
 
         socket.on('connect', () => { myId = socket.id; });
         socket.on('playerJoined', (data) => {
@@ -203,10 +199,7 @@
             const chatBox = document.getElementById('chatBox');
             const div = document.createElement('div');
             div.className = 'chat-msg';
-            
-            // Name Color Logic
             const nameSpan = `<span class="chat-name" style="color: ${data.color || '#3498db'}">${data.name}:</span>`;
-            
             if(data.type === 'correct') {
                 div.innerHTML = `${nameSpan} <span class="chat-correct">${data.text}</span>`;
             } else if (data.type === 'winner-chat') {
@@ -289,7 +282,6 @@
                 if(!player) return;
                 const div = document.createElement('div');
                 div.className = `pillar ${rankClass}`;
-                // Apply player color to the name!
                 div.innerHTML = `<div class="pillar-name" style="color:${player.color}">${player.name}</div><div class="rank-label">${rankNum}</div><div class="pillar-score">${player.score}</div>`;
                 podium.appendChild(div);
             };
@@ -314,7 +306,7 @@
         addEnterKey("searchInput", "searchBtn");
         addEnterKey("guessInput", "submitGuessBtn");
         
-        // NEW JOIN LOGIC: SEND NAME AND COLOR
+        // NEW JOIN LOGIC
         document.getElementById('joinBtn').onclick = () => { 
             const name = document.getElementById('playerName').value; 
             if(name) { 
