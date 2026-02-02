@@ -39,8 +39,6 @@
         .gold { background: linear-gradient(to top, #f1c40f, #f39c12); height: 220px; order: 2; z-index: 10; box-shadow: 0 0 20px rgba(241, 196, 15, 0.3); }
         .silver { background: linear-gradient(to top, #bdc3c7, #95a5a6); height: 160px; order: 1; }
         .bronze { background: linear-gradient(to top, #cd6133, #d35400); height: 110px; order: 3; }
-        
-        /* NEW: Display for the submitter */
         #activeSubmitter { font-style: italic; color: #9b59b6; margin-bottom: 10px; }
     </style>
 </head>
@@ -80,9 +78,7 @@
             <h2>Guess the Song!</h2>
             <div class="progress-container"><div class="progress-bar" id="gameProgress"></div></div>
             <p>Track <span id="trackNum">1</span></p>
-            
             <p id="activeSubmitter">Picked by: ???</p>
-            
             <div id="countdown">30</div>
             <audio id="gameAudio" style="display:none"></audio>
             <div id="chatBox"></div>
@@ -154,6 +150,8 @@
                 div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-correct">${data.text}</span>`;
             } else if (data.type === 'winner-chat') {
                 div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-winner">${data.text}</span>`;
+            } else if (data.type === 'system') {
+                div.innerHTML = `<div style="text-align:center; color:#f39c12; margin:5px 0; font-style:italic;">${data.text}</div>`;
             } else {
                 div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-wrong">${data.text}</span>`;
             }
@@ -163,18 +161,21 @@
         socket.on('playTrack', (data) => {
             document.getElementById('questionArea').classList.remove('hidden');
             document.getElementById('revealArea').classList.add('hidden');
-            document.getElementById('chatBox').innerHTML = '';
             
-            // NEW: Show submitter immediately
+            // --- NEW: DON'T CLEAR CHAT, JUST ADD SEPARATOR ---
+            const chatBox = document.getElementById('chatBox');
+            const separator = document.createElement('div');
+            separator.style.cssText = "text-align: center; opacity: 0.5; margin: 10px 0; font-size: 0.8rem; border-top: 1px solid #333; padding-top: 5px;";
+            separator.textContent = `--- Round ${data.trackIndex + 1} ---`;
+            chatBox.appendChild(separator);
+            
             document.getElementById('activeSubmitter').textContent = "Picked by: " + data.submitterName;
-
             const input = document.getElementById('guessInput');
             input.value = '';
             input.disabled = false;
             input.classList.remove('input-winner');
             input.placeholder = "Type guess...";
             input.focus();
-            
             document.getElementById('submitGuessBtn').disabled = false;
             document.getElementById('guessFeedback').textContent = '';
             document.getElementById('trackNum').textContent = data.trackIndex + 1;
