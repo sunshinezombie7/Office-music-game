@@ -193,26 +193,30 @@
             updateScores(data.scores, 'scoreList');
         });
 
-        socket.on('guessResult', (data) => {
+socket.on('guessResult', (data) => {
             const fb = document.getElementById('guessFeedback');
+            const input = document.getElementById('guessInput');
+            const btn = document.getElementById('submitGuessBtn');
+            
             if(data.correct) {
-                fb.textContent = "✅ Correct! +10 Points";
+                // CORRECT: Lock everything so they can't spam points
+                fb.textContent = `✅ Correct! +${data.points} Points`;
                 fb.className = "guess-correct";
-                document.getElementById('guessInput').disabled = true;
-                document.getElementById('submitGuessBtn').disabled = true;
+                input.disabled = true; 
+                btn.disabled = true;
             } else {
-                fb.textContent = "❌ Wrong!";
+                // WRONG: Force Unlock everything
+                fb.textContent = data.message ? "⚠️ " + data.message : "❌ Wrong! Try again.";
                 fb.className = "guess-incorrect";
+                
+                // CRITICAL FIX: Explicitly enable controls again
+                input.disabled = false; 
+                btn.disabled = false;
+                
+                // Clear the box so they can type fresh (easier than selecting)
+                input.value = ''; 
+                input.focus();
             }
-        });
-
-        socket.on('gameFinished', (data) => {
-            showScreen('resultsScreen');
-            updateScores(data.scores, 'finalScoreList');
-        });
-        
-        socket.on('playAgainStarted', () => {
-            location.reload();
         });
 
         // --- 3. BUTTON ACTIONS & ENTER KEY SUPPORT ---
