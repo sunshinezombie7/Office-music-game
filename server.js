@@ -3,27 +3,26 @@ const http = require('http');
 const { Server } = require('socket.io');
 const axios = require('axios');
 const path = require('path');
-const levenshtein = require('levenshtein'); // Ensure this is in package.json
+const levenshtein = require('levenshtein'); 
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// SERVE STATIC FILES
 app.use(express.static(path.join(__dirname, 'public')));
 
 // DATA STORAGE
-let players = {}; // { socketId: { id, name, score, hasSubmitted } }
-let gameQueue = []; // Array of song objects to play
-let submittedPlayers = new Set(); // Track who has submitted
-let gameState = 'lobby'; // 'lobby', 'submission', 'playing', 'results'
+let players = {}; 
+let gameQueue = []; 
+let submittedPlayers = new Set(); 
+let gameState = 'lobby'; 
 let currentRoundIndex = 0;
 let roundTimer = null;
+let roundWinners = new Set(); // Track who answered correctly this round
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // 1. JOIN GAME
     socket.on('joinGame', (name) => {
         players[socket.id] = {
             id: socket.id,
@@ -31,136 +30,113 @@ io.on('connection', (socket) => {
             score: 0,
             hasSubmitted: false
         };
-        
-        // Send everyone the new player list
         io.emit('playerJoined', {
             players: players,
-            hostId: Object.keys(players)[0], // First player is host
+            hostId: Object.keys(players)[0],
             submittedPlayers: Array.from(submittedPlayers)
         });
     });
 
-    // 2. SEARCH ITUNES (Fixes "Undefined" bug)
     socket.on('searchSongs', async (query) => {
         try {
             const response = await axios.get(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&limit=5`);
-            
-            // MAP data to exactly what HTML expects
             const results = response.data.results.map(track => ({
                 trackName: track.trackName,
                 artistName: track.artistName,
                 previewUrl: track.previewUrl,
                 albumArt: track.artworkUrl100
             }));
-            
             socket.emit('searchResults', results);
-        } catch (error) {
-            console.error("Search failed", error);
-        }
+        } catch (error) { console.error(error); }
     });
 
-    // 3. SUBMIT SONG (Fixes "Stuck" bug)
     socket.on('submitSong', (song) => {
         if (!players[socket.id]) return;
-
-        // Tag the song with who picked it
         song.submitterId = socket.id;
         song.submitterName = players[socket.id].name;
         
-        // Add to queue
         gameQueue.push(song);
         submittedPlayers.add(socket.id);
         players[socket.id].hasSubmitted = true;
 
-        // CHECK IF READY TO START
         const totalPlayers = Object.keys(players).length;
         const totalSubmitted = submittedPlayers.size;
-        const isReady = totalSubmitted === totalPlayers && totalPlayers > 0;
-
+        
         io.emit('songSubmitted', {
             players: players,
-            submittedPlayers: Array.from(submittedPlayers), // Send as array for count
-            isReady: isReady
+            submittedPlayers: Array.from(submittedPlayers),
+            isReady: totalSubmitted === totalPlayers && totalPlayers > 0
         });
     });
 
-    // 4. START GAME
     socket.on('startGame', () => {
         gameState = 'playing';
         currentRoundIndex = 0;
-        
-        // Shuffle the queue
         gameQueue = gameQueue.sort(() => Math.random() - 0.5);
-        
         io.emit('gameStarted', { trackCount: gameQueue.length });
-        
-        // Start first round after delay
         setTimeout(startRound, 3000);
     });
 
-   // 5. GUESS LOGIC (IMPROVED)
+    // --- GUESSING LOGIC ---
     socket.on('submitGuess', (guess) => {
         if (gameState !== 'playing' || !gameQueue[currentRoundIndex]) return;
 
+        // 1. Prevent Point Farming (Already guessed?)
+        if (roundWinners.has(socket.id)) {
+            socket.emit('guessResult', { correct: true, points: 0, message: "You already got this one!" });
+            return;
+        }
+
         const currentTrack = gameQueue[currentRoundIndex];
         
-        // Prevent guessing your own song
+        // 2. Prevent cheating (Guessing own song)
         if (socket.id === currentTrack.submitterId) {
              socket.emit('guessResult', { correct: false, message: "You can't guess your own song!" });
              return;
         }
 
-        // --- SMARTER FUZZY MATCHING ---
-        // 1. Clean up strings (remove punctuation, extra spaces, lowercase)
-        const clean = (str) => str.toLowerCase().replace(/[^\w\s]/gi, '').trim();
+        // 3. CLEAN UP (Lowercase + Remove Punctuation)
+        const clean = (str) => (str || "").toLowerCase().replace(/[^\w\s]/gi, '').trim();
         
         const userGuess = clean(guess);
         const title = clean(currentTrack.trackName);
         const artist = clean(currentTrack.artistName);
 
-        // 2. Check for exact containment (e.g. guess "queen" matches "killer queen")
-        // We only allow this if the guess is at least 4 characters long to prevent cheap guesses like "a" or "the"
-        const isTitleMatch = (userGuess.length > 3 && title.includes(userGuess)) || userGuess === title;
-        const isArtistMatch = (userGuess.length > 3 && artist.includes(userGuess)) || userGuess === artist;
-
-        // 3. Levenshtein (Typo Tolerance)
-        // We allow more typos for longer words. (Accepts ~30% wrong characters)
+        // 4. CHECK MATCH (Exact or Fuzzy)
+        const isTitleMatch = (userGuess.length > 2 && title.includes(userGuess)) || userGuess === title;
+        const isArtistMatch = (userGuess.length > 2 && artist.includes(userGuess)) || userGuess === artist;
+        
+        // Levenshtein (Typo Tolerance)
         const titleDist = new levenshtein(userGuess, title).distance;
-        const artistDist = new levenshtein(userGuess, artist).distance;
-        const allowedTyposTitle = Math.floor(title.length * 0.3); 
-        const allowedTyposArtist = Math.floor(artist.length * 0.3);
+        const allowedTypos = Math.max(2, Math.floor(title.length * 0.3));
 
-        const isTypoMatch = titleDist <= allowedTyposTitle || artistDist <= allowedTyposArtist;
-
-        if (isTitleMatch || isArtistMatch || isTypoMatch) {
+        if (isTitleMatch || isArtistMatch || titleDist <= allowedTypos) {
+            // CORRECT!
             players[socket.id].score += 10;
+            if(players[currentTrack.submitterId]) players[currentTrack.submitterId].score += 2;
             
-            // Bonus for the submitter
-            if(players[currentTrack.submitterId]) {
-                players[currentTrack.submitterId].score += 2;
-            }
-            
+            roundWinners.add(socket.id); // Mark as winner for this round
             socket.emit('guessResult', { correct: true, points: 10 });
         } else {
+            // WRONG!
             socket.emit('guessResult', { correct: false });
         }
     });
     
-    // 6. PLAY AGAIN
     socket.on('playAgain', () => {
         gameQueue = [];
         submittedPlayers.clear();
+        roundWinners.clear();
         Object.values(players).forEach(p => p.hasSubmitted = false);
         gameState = 'lobby';
         io.emit('playAgainStarted');
     });
 
-    // DISCONNECT
     socket.on('disconnect', () => {
         delete players[socket.id];
         submittedPlayers.delete(socket.id);
+        roundWinners.delete(socket.id);
         
-        // If host leaves, assign new host
         const remainingIds = Object.keys(players);
         if (remainingIds.length > 0) {
              io.emit('playerJoined', {
@@ -172,30 +148,27 @@ io.on('connection', (socket) => {
     });
 });
 
-// GAME LOOP HELPERS
 function startRound() {
     if (currentRoundIndex >= gameQueue.length) {
-        // Game Over
         io.emit('gameFinished', { scores: players });
         return;
     }
+    
+    // Reset round winners
+    roundWinners.clear();
 
     const track = gameQueue[currentRoundIndex];
-
-    // Tell clients to play (hide details)
     io.emit('playTrack', {
         trackIndex: currentRoundIndex,
         totalTracks: gameQueue.length,
         roundCountdown: 15,
-        track: { previewUrl: track.previewUrl } // Only send audio URL
+        track: { previewUrl: track.previewUrl }
     });
 
-    // Start Countdown
     let timeLeft = 15;
     roundTimer = setInterval(() => {
         timeLeft--;
         io.emit('countdown', timeLeft);
-        
         if (timeLeft <= 0) {
             clearInterval(roundTimer);
             endRound();
@@ -205,21 +178,12 @@ function startRound() {
 
 function endRound() {
     const track = gameQueue[currentRoundIndex];
-    
-    // Reveal Answer
     io.emit('roundEnded', {
-        track: {
-            title: track.trackName,
-            artist: track.artistName,
-            albumArt: track.albumArt
-        },
+        track: { title: track.trackName, artist: track.artistName, albumArt: track.albumArt },
         submitterName: track.submitterName,
         scores: players
     });
-
     currentRoundIndex++;
-    
-    // Wait 5 seconds before next round
     setTimeout(startRound, 5000);
 }
 
