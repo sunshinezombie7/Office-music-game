@@ -3,7 +3,27 @@ const http = require('http');
 const { Server } = require('socket.io');
 const axios = require('axios');
 const path = require('path');
-const levenshtein = require('levenshtein'); 
+
+// Simple Levenshtein for typos
+const levenshtein = (a, b) => {
+    if(a.length == 0) return b.length; 
+    if(b.length == 0) return a.length; 
+    var matrix = [];
+    var i;
+    for(i = 0; i <= b.length; i++){ matrix[i] = [i]; }
+    var j;
+    for(j = 0; j <= a.length; j++){ matrix[0][j] = j; }
+    for(i = 1; i <= b.length; i++){
+        for(j = 1; j <= a.length; j++){
+            if(b.charAt(i-1) == a.charAt(j-1)){
+                matrix[i][j] = matrix[i-1][j-1];
+            } else {
+                matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1));
+            }
+        }
+    }
+    return matrix[b.length][a.length];
+};
 
 const app = express();
 const server = http.createServer(app);
@@ -11,14 +31,13 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// DATA STORAGE
 let players = {}; 
 let gameQueue = []; 
 let submittedPlayers = new Set(); 
 let gameState = 'lobby'; 
 let currentRoundIndex = 0;
 let roundTimer = null;
-let roundWinners = new Set(); // Track who answered correctly this round
+let roundWinners = new Set(); 
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -54,14 +73,11 @@ io.on('connection', (socket) => {
         if (!players[socket.id]) return;
         song.submitterId = socket.id;
         song.submitterName = players[socket.id].name;
-        
         gameQueue.push(song);
         submittedPlayers.add(socket.id);
         players[socket.id].hasSubmitted = true;
-
         const totalPlayers = Object.keys(players).length;
         const totalSubmitted = submittedPlayers.size;
-        
         io.emit('songSubmitted', {
             players: players,
             submittedPlayers: Array.from(submittedPlayers),
@@ -77,49 +93,60 @@ io.on('connection', (socket) => {
         setTimeout(startRound, 3000);
     });
 
-    // --- GUESSING LOGIC ---
+    // --- CHAT & GUESS LOGIC ---
     socket.on('submitGuess', (guess) => {
         if (gameState !== 'playing' || !gameQueue[currentRoundIndex]) return;
 
-        // 1. Prevent Point Farming (Already guessed?)
+        // 1. Prevent guessing if already correct
         if (roundWinners.has(socket.id)) {
             socket.emit('guessResult', { correct: true, points: 0, message: "You already got this one!" });
             return;
         }
 
         const currentTrack = gameQueue[currentRoundIndex];
-        
-        // 2. Prevent cheating (Guessing own song)
+        const playerName = players[socket.id].name;
+
+        // 2. Prevent guessing own song
         if (socket.id === currentTrack.submitterId) {
              socket.emit('guessResult', { correct: false, message: "You can't guess your own song!" });
              return;
         }
 
-        // 3. CLEAN UP (Lowercase + Remove Punctuation)
         const clean = (str) => (str || "").toLowerCase().replace(/[^\w\s]/gi, '').trim();
-        
         const userGuess = clean(guess);
         const title = clean(currentTrack.trackName);
         const artist = clean(currentTrack.artistName);
 
-        // 4. CHECK MATCH (Exact or Fuzzy)
         const isTitleMatch = (userGuess.length > 2 && title.includes(userGuess)) || userGuess === title;
         const isArtistMatch = (userGuess.length > 2 && artist.includes(userGuess)) || userGuess === artist;
-        
-        // Levenshtein (Typo Tolerance)
-        const titleDist = new levenshtein(userGuess, title).distance;
-        const allowedTypos = Math.max(2, Math.floor(title.length * 0.3));
+        const titleDist = levenshtein(userGuess, title);
+        const allowedTypos = Math.max(2, Math.floor(title.length * 0.4));
 
         if (isTitleMatch || isArtistMatch || titleDist <= allowedTypos) {
             // CORRECT!
             players[socket.id].score += 10;
             if(players[currentTrack.submitterId]) players[currentTrack.submitterId].score += 2;
+            roundWinners.add(socket.id);
             
-            roundWinners.add(socket.id); // Mark as winner for this round
             socket.emit('guessResult', { correct: true, points: 10 });
+            
+            // BROADCAST: "Alex guessed correctly!" (Hide the word)
+            io.emit('chatMessage', { 
+                name: playerName, 
+                text: "Guessed the answer!", 
+                type: 'correct' 
+            });
+            
         } else {
             // WRONG!
             socket.emit('guessResult', { correct: false });
+            
+            // BROADCAST: The actual wrong guess so everyone can see
+            io.emit('chatMessage', { 
+                name: playerName, 
+                text: guess, 
+                type: 'wrong' 
+            });
         }
     });
     
@@ -136,15 +163,8 @@ io.on('connection', (socket) => {
         delete players[socket.id];
         submittedPlayers.delete(socket.id);
         roundWinners.delete(socket.id);
-        
         const remainingIds = Object.keys(players);
-        if (remainingIds.length > 0) {
-             io.emit('playerJoined', {
-                players: players,
-                hostId: remainingIds[0],
-                submittedPlayers: Array.from(submittedPlayers)
-            });
-        }
+        if (remainingIds.length > 0) io.emit('playerJoined', { players: players, hostId: remainingIds[0], submittedPlayers: Array.from(submittedPlayers) });
     });
 });
 
@@ -153,10 +173,7 @@ function startRound() {
         io.emit('gameFinished', { scores: players });
         return;
     }
-    
-    // Reset round winners
     roundWinners.clear();
-
     const track = gameQueue[currentRoundIndex];
     io.emit('playTrack', {
         trackIndex: currentRoundIndex,
@@ -164,7 +181,6 @@ function startRound() {
         roundCountdown: 15,
         track: { previewUrl: track.previewUrl }
     });
-
     let timeLeft = 15;
     roundTimer = setInterval(() => {
         timeLeft--;
