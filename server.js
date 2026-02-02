@@ -37,6 +37,7 @@ let submittedPlayers = new Set();
 let gameState = 'lobby'; 
 let currentRoundIndex = 0;
 let roundTimer = null;
+let roundStartTime = 0; // NEW: Tracks when the music started
 let roundWinners = new Set(); 
 
 io.on('connection', (socket) => {
@@ -128,23 +129,28 @@ io.on('connection', (socket) => {
         const allowedTypos = Math.max(2, Math.floor(title.length * 0.4));
 
         if (isTitleMatch || isArtistMatch || titleDist <= allowedTypos) {
-            // GUESSER REWARD
-            players[socket.id].score += 10;
             
-            // SUBMITTER REWARD: +3 points per correct guess
+            // --- NEW TIME-BASED SCORING ---
+            const now = Date.now();
+            const elapsedSeconds = (now - roundStartTime) / 1000;
+            // Max time is 30. Points = Time remaining. Minimum 5 points.
+            let pointsEarned = Math.max(5, Math.ceil(30 - elapsedSeconds));
+            
+            // GUESSER REWARD
+            players[socket.id].score += pointsEarned;
+            
+            // SUBMITTER REWARD: Still +3 per guess
             if(players[currentTrack.submitterId]) {
                 players[currentTrack.submitterId].score += 3;
             }
 
             roundWinners.add(socket.id);
             
-            socket.emit('guessResult', { correct: true, points: 10 });
-            io.emit('chatMessage', { name: playerName, text: "Guessed the answer!", type: 'correct' });
+            socket.emit('guessResult', { correct: true, points: pointsEarned });
+            io.emit('chatMessage', { name: playerName, text: `Guessed correctly! (+${pointsEarned} pts)`, type: 'correct' });
 
-            // --- END ROUND EARLY LOGIC ---
-            // Everyone except the submitter
+            // END ROUND EARLY LOGIC
             const totalPossibleGuessers = Object.keys(players).length - 1;
-            
             if (roundWinners.size >= totalPossibleGuessers && totalPossibleGuessers > 0) {
                 setTimeout(() => {
                     clearInterval(roundTimer);
@@ -184,12 +190,18 @@ function startRound() {
     }
     roundWinners.clear();
     const track = gameQueue[currentRoundIndex];
+    
+    // START THE CLOCK
+    roundStartTime = Date.now();
+    
     io.emit('playTrack', {
         trackIndex: currentRoundIndex,
         totalTracks: gameQueue.length,
-        roundCountdown: 30, // 30 second timer
-        track: { previewUrl: track.previewUrl }
+        roundCountdown: 30,
+        track: { previewUrl: track.previewUrl },
+        submitterName: track.submitterName // NEW: Send this immediately
     });
+    
     let timeLeft = 30;
     roundTimer = setInterval(() => {
         timeLeft--;
