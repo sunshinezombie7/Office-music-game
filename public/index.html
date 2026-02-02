@@ -3,135 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Not Songlio</title>
+    <title>Not Songlio: Retro Edition</title>
     <style>
+        /* --- RETRO SYNTHWAVE THEME --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #1a1a2e; color: #fff; padding: 20px; text-align: center; padding-bottom: 200px; } 
+        body { 
+            font-family: 'Courier New', Courier, monospace; /* Retro Font */
+            background: #120428; /* Deep Purple */
+            color: #fff; 
+            padding: 20px; 
+            text-align: center; 
+            padding-bottom: 200px; 
+        } 
         .container { max-width: 800px; margin: 0 auto; }
-        h1 { color: #3498db; margin-bottom: 10px; }
-        .screen { background: #232336; padding: 25px; border-radius: 10px; margin: 20px 0; border: 1px solid #444; }
+        
+        /* Neon Glow Text */
+        h1 { 
+            color: #ff00ff; 
+            text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff; 
+            margin-bottom: 20px; 
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Boxy Retro Screens */
+        .screen { 
+            background: #000; 
+            padding: 25px; 
+            margin: 20px 0; 
+            border: 2px solid #00ffff; /* Cyan Border */
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+        }
+        
         .hidden { display: none !important; }
-        input[type="text"] { padding: 10px; width: 70%; border-radius: 5px; border: 1px solid #555; background: #111; color: white; font-size: 1.1rem;}
-        button { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; margin: 5px; background: #3498db; color: white; }
-        button:disabled { background: #555; cursor: not-allowed; }
-        button.host-btn { background: #2ecc71; }
-        /* KICK BUTTON STYLE */
-        button.danger-btn { background: #e74c3c; padding: 2px 8px; font-size: 0.8rem; margin: 0 0 0 10px; }
+
+        /* Inputs: Black terminal style */
+        input[type="text"] { 
+            padding: 15px; 
+            width: 70%; 
+            border: 2px solid #ff00ff; 
+            background: #220022; 
+            color: #00ffff; 
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            outline: none;
+        }
+        input::placeholder { color: #884488; }
+
+        /* Buttons: Boxy and Bright */
+        button { 
+            padding: 15px 25px; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: bold; 
+            margin: 5px; 
+            background: #00ffff; 
+            color: #000; 
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            font-size: 1rem;
+            transition: all 0.1s;
+        }
+        button:hover { background: #fff; transform: scale(1.05); }
+        button:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
         
-        .song-item { background: #2a2a3a; padding: 10px; margin: 5px 0; cursor: pointer; border-radius: 5px; text-align: left; }
-        .song-item:hover { background: #333; }
-        .song-item.selected { border-left: 5px solid #9b59b6; background: #333; }
-        #playerList li, #scoreList li, #runnerUpList li { background: #111; padding: 10px; margin: 5px 0; display: flex; justify-content: space-between; border-radius: 5px; align-items: center; }
-        .progress-container { width: 100%; height: 8px; background: #444; margin: 15px 0; border-radius: 4px; }
-        .progress-bar { height: 100%; background: #2ecc71; width: 0%; transition: width 0.5s; }
-        #countdown { font-size: 3rem; font-weight: bold; color: #e74c3c; margin: 10px 0; }
-        .guess-correct { color: #2ecc71; font-weight: bold; margin: 10px; font-size: 1.2rem; }
-        .guess-incorrect { color: #e74c3c; font-weight: bold; margin: 10px; }
+        /* Specific Button Colors */
+        button.host-btn { background: #ff00ff; color: #fff; }
+        button.danger-btn { background: #ff3333; color: #fff; padding: 2px 8px; font-size: 0.8rem; margin: 0 0 0 10px; }
+
+        /* Song List Items */
+        .song-item { 
+            background: #1a1a1a; 
+            padding: 10px; 
+            margin: 5px 0; 
+            cursor: pointer; 
+            border: 1px solid #333; 
+            text-align: left; 
+        }
+        .song-item:hover { background: #222; border-color: #00ffff; }
+        .song-item.selected { border-left: 8px solid #ff00ff; background: #220022; }
+
+        /* Lists */
+        #playerList li, #scoreList li, #runnerUpList li { 
+            background: #000; 
+            border-bottom: 1px solid #333;
+            padding: 10px; 
+            margin: 5px 0; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+
+        /* Progress Bar */
+        .progress-container { width: 100%; height: 15px; background: #333; margin: 15px 0; border: 1px solid #fff; }
+        .progress-bar { height: 100%; background: #00ffff; width: 0%; transition: width 0.5s; }
+
+        #countdown { font-size: 3rem; font-weight: bold; color: #ff00ff; margin: 10px 0; text-shadow: 2px 2px #000; }
         
-        #bottomPanel { position: fixed; bottom: 0; left: 0; width: 100%; background: #16213e; border-top: 2px solid #3498db; padding: 10px; z-index: 100; display: flex; flex-direction: column; align-items: center; }
-        #chatBox { width: 90%; max-width: 800px; height: 120px; overflow-y: auto; background: #111; border: 1px solid #444; border-radius: 5px; padding: 10px; margin-bottom: 10px; text-align: left; }
+        .guess-correct { color: #00ff00; font-weight: bold; margin: 10px; font-size: 1.2rem; text-transform: uppercase; }
+        .guess-incorrect { color: #ff3333; font-weight: bold; margin: 10px; text-transform: uppercase; }
+        
+        /* CHAT & BOTTOM PANEL */
+        #bottomPanel { 
+            position: fixed; bottom: 0; left: 0; width: 100%; 
+            background: #000; 
+            border-top: 4px solid #ff00ff; 
+            padding: 10px; z-index: 100; 
+            display: flex; flex-direction: column; align-items: center; 
+        }
+        #chatBox { 
+            width: 90%; max-width: 800px; height: 120px; 
+            overflow-y: auto; background: #111; 
+            border: 1px solid #333; 
+            padding: 10px; margin-bottom: 10px; text-align: left; 
+            font-size: 0.9rem;
+        }
         #inputRow { width: 100%; max-width: 800px; display: flex; gap: 10px; }
         #inputRow input { flex: 1; }
         
-        .chat-msg { margin: 2px 0; font-size: 0.9rem; }
-        .chat-wrong { color: #ccc; }
-        .chat-correct { color: #2ecc71; font-weight: bold; font-style: italic; }
-        .chat-winner { color: #f1c40f; font-weight: bold; }
-        .chat-dj { color: #9b59b6; font-weight: bold; } 
-        .chat-name { font-weight: bold; } 
-        .input-winner { border: 2px solid #2ecc71 !important; color: #2ecc71 !important; }
+        /* Chat Colors */
+        .chat-msg { margin: 2px 0; }
+        .chat-name { font-weight: bold; text-transform: uppercase; }
+        .chat-correct { color: #00ff00; }
+        .chat-winner { color: #ffff00; }
+        .chat-dj { color: #ff00ff; }
+        .chat-wrong { color: #666; }
+        .input-winner { border: 2px solid #00ff00 !important; color: #00ff00 !important; }
 
+        /* Podium */
         .podium-container { display: flex; justify-content: center; align-items: flex-end; height: 300px; margin-bottom: 30px; gap: 10px; }
-        .pillar { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; width: 100px; border-radius: 10px 10px 0 0; color: #1a1a2e; font-weight: bold; text-align: center; padding-bottom: 10px; position: relative; }
-        .pillar-name { position: absolute; top: -40px; width: 100%; color: #fff; font-size: 1.1rem; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .pillar { 
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center; 
+            width: 100px; 
+            border: 2px solid #fff; /* Retro Outline */
+            color: #000; font-weight: bold; text-align: center; padding-bottom: 10px; position: relative; 
+        }
+        .pillar-name { position: absolute; top: -40px; width: 100%; color: #fff; font-size: 1.1rem; font-weight: bold; text-shadow: 2px 2px #000; }
         .pillar-score { font-size: 1.5rem; }
-        .rank-label { font-size: 3rem; opacity: 0.3; margin-bottom: 10px; }
-        .gold { background: linear-gradient(to top, #f1c40f, #f39c12); height: 220px; order: 2; z-index: 10; box-shadow: 0 0 20px rgba(241, 196, 15, 0.3); }
-        .silver { background: linear-gradient(to top, #bdc3c7, #95a5a6); height: 160px; order: 1; }
-        .bronze { background: linear-gradient(to top, #cd6133, #d35400); height: 110px; order: 3; }
-        #activeSubmitter { font-style: italic; color: #9b59b6; margin-bottom: 10px; }
-        .status-message { color: #e74c3c; margin-top: 10px; font-weight: bold; display: none; }
+        .rank-label { font-size: 2rem; opacity: 0.5; margin-bottom: 10px; font-weight: bold;}
+        
+        .gold { background: #ffff00; height: 220px; order: 2; z-index: 10; box-shadow: 0 0 20px rgba(255,255,0,0.5); }
+        .silver { background: #cccccc; height: 160px; order: 1; }
+        .bronze { background: #cd7f32; height: 110px; order: 3; }
+        
+        #activeSubmitter { font-style: italic; color: #ff00ff; margin-bottom: 10px; }
+        .status-message { color: #ff3333; margin-top: 10px; font-weight: bold; display: none; }
 
+        /* Color Picker */
         .color-options { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
-        .color-dot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; }
-        .color-dot:hover { transform: scale(1.2); }
-        .color-dot.selected { border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); }
-        .player-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; display: inline-block; }
+        .color-dot { width: 30px; height: 30px; border: 2px solid #000; cursor: pointer; transition: transform 0.2s; } /* Square dots for retro feel? kept round for clarity, but solid border */
+        .color-dot:hover { transform: scale(1.2); border-color: #fff; }
+        .color-dot.selected { border: 3px solid #fff; transform: scale(1.1); box-shadow: 0 0 10px #fff; }
+        .player-dot { width: 12px; height: 12px; margin-right: 10px; display: inline-block; border: 1px solid #fff; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎵 Not Songlio 🎵</h1>
+        <h1>🎵 NOT SONGLIO 🎵</h1>
+        
         <div class="screen" id="loginScreen">
-            <h2>Join Game</h2>
-            <input type="text" id="playerName" placeholder="Enter your name..." maxlength="15">
-            <p style="margin: 15px 0 5px; font-size: 0.9rem; color: #ccc;">Choose your color:</p>
+            <h2>INSERT COIN (JOIN GAME)</h2>
+            <input type="text" id="playerName" placeholder="ENTER NAME..." maxlength="15">
+            <p style="margin: 15px 0 5px; font-size: 0.8rem; color: #00ffff;">SELECT COLOR:</p>
             <div class="color-options" id="colorPicker"></div>
             <br>
-            <button id="joinBtn">Join</button>
+            <button id="joinBtn">START</button>
             <div id="loginStatus" class="status-message"></div>
         </div>
+
         <div class="screen hidden" id="submissionScreen">
-            <h2>Pick a Song</h2>
+            <h2>SELECT TRACK</h2>
             <div style="margin-bottom: 15px;">
-                <input type="text" id="searchInput" placeholder="Song or Artist...">
-                <button id="searchBtn">Search</button>
+                <input type="text" id="searchInput" placeholder="ARTIST OR TITLE...">
+                <button id="searchBtn">SEARCH</button>
             </div>
             <div id="searchResults" class="hidden"></div>
             <div id="selectedSong" class="hidden">
-                <h3 id="selTitle" style="color:#f39c12"></h3>
+                <h3 id="selTitle" style="color:#ffff00"></h3>
                 <p id="selArtist"></p>
                 <audio id="previewAudio" controls style="width: 100%; margin: 10px 0;"></audio>
                 <br>
-                <button id="submitSongBtn" class="host-btn">Submit This Song</button>
+                <button id="submitSongBtn" class="host-btn">CONFIRM SELECTION</button>
             </div>
             <div id="waitingArea" class="hidden" style="margin-top:20px; border-top:1px solid #444; padding-top:10px;">
-                <h3>Waiting for Players...</h3>
-                <p>Submitted: <span id="submittedCount">0</span>/<span id="totalPlayers">0</span></p>
+                <h3>WAITING FOR PLAYERS...</h3>
+                <p>READY: <span id="submittedCount">0</span>/<span id="totalPlayers">0</span></p>
                 <ul id="playerList"></ul>
             </div>
             <div class="host-controls hidden" id="hostControls">
-                <button id="startGameBtn" class="host-btn" disabled>Start Game</button>
+                <button id="startGameBtn" class="host-btn" disabled>INITIATE GAME</button>
             </div>
         </div>
         
         <div class="screen hidden" id="gameScreen">
-            <h2>Guess the Song!</h2>
+            <h2>GUESS THE TRACK</h2>
             <div class="progress-container"><div class="progress-bar" id="gameProgress"></div></div>
-            <p>Track <span id="trackNum">1</span></p>
-            <p id="activeSubmitter">Picked by: ???</p>
+            <p>TRACK <span id="trackNum">1</span></p>
+            <p id="activeSubmitter">DJ: ???</p>
             <div id="countdown">30</div>
             <audio id="gameAudio" style="display:none"></audio>
             
             <div id="revealArea" class="hidden">
-                <img id="albumArt" src="" style="width:150px; border-radius:10px;">
-                <h3 id="revealTitle" style="color:#f39c12; margin-top:10px;">Title</h3>
-                <p id="revealArtist" style="color:#3498db">Artist</p>
-                <p id="revealSubmitter" style="color:#9b59b6; font-style:italic;">Picked by: ???</p>
+                <img id="albumArt" src="" style="width:150px; border: 2px solid #fff;">
+                <h3 id="revealTitle" style="color:#ffff00; margin-top:10px;">TITLE</h3>
+                <p id="revealArtist" style="color:#00ffff">ARTIST</p>
+                <p id="revealSubmitter" style="color:#ff00ff; font-style:italic;">CHOSEN BY: ???</p>
             </div>
             
             <div id="scoreboard" style="margin-top: 30px; text-align: left;">
-                <h3>Scores</h3>
+                <h3 style="border-bottom: 2px solid #fff; padding-bottom: 5px;">HIGH SCORES</h3>
                 <ul id="scoreList"></ul>
             </div>
         </div>
 
         <div class="screen hidden" id="resultsScreen">
-            <h2>🏆 Game Over! 🏆</h2>
+            <h2>🏆 GAME OVER 🏆</h2>
             <div id="podium" class="podium-container"></div>
             <div id="runnerUps" style="text-align: left; margin-top: 30px;">
-                <h3>The Rest</h3>
+                <h3>RANKINGS</h3>
                 <ul id="runnerUpList"></ul>
             </div>
-            <button id="playAgainBtn" class="host-btn" style="margin-top: 20px;">Play Again</button>
+            <button id="playAgainBtn" class="host-btn" style="margin-top: 20px;">INSERT COIN (REPLAY)</button>
         </div>
     </div>
 
     <div id="bottomPanel" class="hidden">
         <div id="chatBox"></div>
         <div id="inputRow">
-            <input type="text" id="guessInput" placeholder="Type guess..." autocomplete="off">
-            <button id="submitGuessBtn">Send</button>
+            <input type="text" id="guessInput" placeholder="ENTER GUESS..." autocomplete="off">
+            <button id="submitGuessBtn">SEND</button>
         </div>
         <div id="guessFeedback" style="height: 20px; margin-top: 5px; font-weight: bold;"></div>
     </div>
@@ -142,10 +243,11 @@
         const socket = io(); 
         let myId = null;
         let selectedTrack = null;
-        let myColor = '#3498db'; 
+        let myColor = '#00ffff'; 
 
-        // SAFE COLOR PICKER SETUP
-        const colors = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#1abc9c', '#3498db', '#9b59b6', '#ff7979'];
+        // --- RETRO NEON PALETTE ---
+        const colors = ['#ff00ff', '#00ffff', '#ffff00', '#00ff00', '#ff9900', '#bd00ff', '#ff3333', '#ffffff'];
+        
         const picker = document.getElementById('colorPicker');
         if (picker) {
             picker.innerHTML = ''; 
@@ -204,7 +306,7 @@
             const chatBox = document.getElementById('chatBox');
             const div = document.createElement('div');
             div.className = 'chat-msg';
-            const nameSpan = `<span class="chat-name" style="color: ${data.color || '#3498db'}">${data.name}:</span>`;
+            const nameSpan = `<span class="chat-name" style="color: ${data.color || '#00ffff'}">${data.name}:</span>`;
             if(data.type === 'correct') {
                 div.innerHTML = `${nameSpan} <span class="chat-correct">${data.text}</span>`;
             } else if (data.type === 'winner-chat') {
@@ -222,15 +324,15 @@
             document.getElementById('revealArea').classList.add('hidden');
             const chatBox = document.getElementById('chatBox');
             const separator = document.createElement('div');
-            separator.style.cssText = "text-align: center; opacity: 0.5; margin: 10px 0; font-size: 0.8rem; border-top: 1px solid #333; padding-top: 5px;";
-            separator.textContent = `--- Round ${data.trackIndex + 1} ---`;
+            separator.style.cssText = "text-align: center; opacity: 0.5; margin: 10px 0; font-size: 0.8rem; border-top: 1px solid #333; padding-top: 5px; color: #ff00ff;";
+            separator.textContent = `--- ROUND ${data.trackIndex + 1} ---`;
             chatBox.appendChild(separator);
-            document.getElementById('activeSubmitter').textContent = "Picked by: " + data.submitterName;
+            document.getElementById('activeSubmitter').textContent = "DJ: " + data.submitterName;
             const input = document.getElementById('guessInput');
             input.value = '';
             input.disabled = false;
             input.classList.remove('input-winner');
-            input.placeholder = "Type guess...";
+            input.placeholder = "ENTER GUESS...";
             input.focus();
             document.getElementById('guessFeedback').textContent = '';
             document.getElementById('trackNum').textContent = data.trackIndex + 1;
@@ -247,12 +349,12 @@
             document.getElementById('revealArea').classList.remove('hidden');
             document.getElementById('revealTitle').textContent = data.track.title;
             document.getElementById('revealArtist').textContent = data.track.artist;
-            document.getElementById('revealSubmitter').textContent = "Picked by: " + data.submitterName;
+            document.getElementById('revealSubmitter').textContent = "CHOSEN BY: " + data.submitterName;
             document.getElementById('albumArt').src = data.track.albumArt || '';
             document.getElementById('gameAudio').pause();
             updateScores(data.scores, 'scoreList');
             const input = document.getElementById('guessInput');
-            input.placeholder = "Round over. Chat away...";
+            input.placeholder = "ROUND OVER. CHAT ENABLED.";
         });
 
         socket.on('guessResult', (data) => {
@@ -260,14 +362,14 @@
             const input = document.getElementById('guessInput');
             if(data.silent) { input.value = ''; input.focus(); return; }
             if(data.correct) {
-                fb.textContent = `✅ Correct! +${data.points}`;
+                fb.textContent = `✅ CORRECT! +${data.points}`;
                 fb.className = "guess-correct";
                 input.classList.add('input-winner');
-                input.placeholder = "Chat with others...";
+                input.placeholder = "CHAT MODE ACTIVATED...";
                 input.value = '';
                 input.focus();
             } else {
-                fb.textContent = data.message ? "⚠️ " + data.message : "❌";
+                fb.textContent = data.message ? "⚠️ " + data.message : "❌ INCORRECT";
                 fb.className = "guess-incorrect";
                 input.value = ''; 
                 input.disabled = false;
@@ -281,8 +383,8 @@
             const duration = 3000;
             const end = Date.now() + duration;
             (function frame() {
-                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
-                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff00ff', '#00ffff'] });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff00ff', '#00ffff'] });
                 if (Date.now() < end) requestAnimationFrame(frame);
             }());
 
@@ -300,15 +402,15 @@
                 div.innerHTML = `<div class="pillar-name" style="color:${player.color}">${player.name}</div><div class="rank-label">${rankNum}</div><div class="pillar-score">${player.score}</div>`;
                 podium.appendChild(div);
             };
-            createPillar(top3[1], 'silver', '2nd');
-            createPillar(top3[0], 'gold', '1st');
-            createPillar(top3[2], 'bronze', '3rd');
+            createPillar(top3[1], 'silver', '2ND');
+            createPillar(top3[0], 'gold', '1ST');
+            createPillar(top3[2], 'bronze', '3RD');
             
             const rest = allPlayers.slice(3);
             if(rest.length === 0) { document.getElementById('runnerUps').classList.add('hidden'); } 
             else { document.getElementById('runnerUps').classList.remove('hidden'); rest.forEach((p, index) => { 
                 const li = document.createElement('li'); 
-                li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>#${index + 4} ${p.name}</span> <span>${p.score} pts</span>`; 
+                li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>#${index + 4} ${p.name}</span> <span>${p.score} PTS</span>`; 
                 runnerList.appendChild(li); 
             }); }
         });
@@ -329,13 +431,12 @@
         };
         
         document.getElementById('searchBtn').onclick = () => { const query = document.getElementById('searchInput').value; if(query) socket.emit('searchSongs', query); };
-        document.getElementById('submitSongBtn').onclick = () => { if(selectedTrack) { socket.emit('submitSong', selectedTrack); document.getElementById('selectedSong').innerHTML = "<h3>Song Submitted! Waiting...</h3>"; document.getElementById('searchResults').classList.add('hidden'); document.getElementById('waitingArea').classList.remove('hidden'); } };
+        document.getElementById('submitSongBtn').onclick = () => { if(selectedTrack) { socket.emit('submitSong', selectedTrack); document.getElementById('selectedSong').innerHTML = "<h3>TRACK CONFIRMED</h3>"; document.getElementById('searchResults').classList.add('hidden'); document.getElementById('waitingArea').classList.remove('hidden'); } };
         document.getElementById('startGameBtn').onclick = () => socket.emit('startGame');
         document.getElementById('submitGuessBtn').onclick = () => { const guess = document.getElementById('guessInput').value; if(guess) socket.emit('submitGuess', guess); };
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
         
-        // --- 3. LOBBY WITH KICK BUTTON ---
         function updateLobby(data) {
             const myPlayer = data.players[myId];
             if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) { showScreen('submissionScreen'); }
@@ -346,7 +447,6 @@
             const list = document.getElementById('playerList'); 
             list.innerHTML = ''; 
             
-            // Check if I am Host
             const amIHost = (myId === data.hostId);
 
             Object.values(data.players).forEach(p => { 
@@ -354,14 +454,8 @@
                 
                 let html = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span>`;
                 
-                // ADD KICK BUTTON IF HOST (AND NOT SELF)
                 if (amIHost && p.id !== myId) {
-                    html += `
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            ${p.hasSubmitted ? '✅' : '⏳'}
-                            <button class="danger-btn" onclick="kickPlayer('${p.id}')">❌</button>
-                        </div>
-                    `;
+                    html += `<div style="display:flex; align-items:center; gap:10px;">${p.hasSubmitted ? '✅' : '⏳'}<button class="danger-btn" onclick="kickPlayer('${p.id}')">❌</button></div>`;
                 } else {
                     html += `${p.hasSubmitted ? '✅' : '⏳'}`;
                 }
@@ -375,14 +469,13 @@
             const list = document.getElementById(listId); list.innerHTML = ''; const sorted = Object.values(scores).sort((a,b) => b.score - a.score); 
             sorted.forEach(p => { 
                 const li = document.createElement('li'); 
-                li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span> <span>${p.score} pts</span>`; 
+                li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span> <span>${p.score} PTS</span>`; 
                 list.appendChild(li); 
             }); 
         }
 
-        // Global Kick Function
         window.kickPlayer = function(id) {
-            if(confirm("Kick this player?")) {
+            if(confirm("EJECT PLAYER?")) {
                 socket.emit('kickPlayer', id);
             }
         };
