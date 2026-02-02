@@ -5,18 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Not Songlio</title>
     <style>
-        /* CSS STYLES */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #1a1a2e; color: #fff; padding: 20px; text-align: center; }
         .container { max-width: 800px; margin: 0 auto; }
         h1 { color: #3498db; margin-bottom: 10px; }
         .screen { background: #232336; padding: 25px; border-radius: 10px; margin: 20px 0; border: 1px solid #444; }
         .hidden { display: none !important; }
-        input { padding: 10px; width: 70%; border-radius: 5px; border: 1px solid #555; background: #111; color: white; }
+        input { padding: 10px; width: 70%; border-radius: 5px; border: 1px solid #555; background: #111; color: white; font-size: 1.1rem;}
         button { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; margin: 5px; background: #3498db; color: white; }
         button:disabled { background: #555; cursor: not-allowed; }
         button.host-btn { background: #2ecc71; }
-        button.danger-btn { background: #e74c3c; }
         .song-item { background: #2a2a3a; padding: 10px; margin: 5px 0; cursor: pointer; border-radius: 5px; text-align: left; }
         .song-item:hover { background: #333; }
         .song-item.selected { border-left: 5px solid #9b59b6; background: #333; }
@@ -24,9 +22,26 @@
         .progress-container { width: 100%; height: 8px; background: #444; margin: 15px 0; border-radius: 4px; }
         .progress-bar { height: 100%; background: #2ecc71; width: 0%; transition: width 0.5s; }
         #countdown { font-size: 3rem; font-weight: bold; color: #e74c3c; margin: 10px 0; }
-        .guess-correct { color: #2ecc71; font-weight: bold; margin: 10px; }
+        .guess-correct { color: #2ecc71; font-weight: bold; margin: 10px; font-size: 1.2rem; }
         .guess-incorrect { color: #e74c3c; font-weight: bold; margin: 10px; }
-        .status-message { padding: 10px; margin: 10px 0; background: #333; border-radius: 5px; display: none; }
+        
+        /* CHAT BOX STYLES */
+        #chatBox {
+            height: 150px;
+            overflow-y: auto;
+            background: #111;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-msg { margin: 2px 0; font-size: 0.9rem; }
+        .chat-wrong { color: #ccc; }
+        .chat-correct { color: #2ecc71; font-weight: bold; font-style: italic; }
+        .chat-name { font-weight: bold; color: #3498db; }
     </style>
 </head>
 <body>
@@ -38,7 +53,6 @@
             <input type="text" id="playerName" placeholder="Enter your name..." maxlength="15">
             <br><br>
             <button id="joinBtn">Join</button>
-            <div id="loginStatus" class="status-message"></div>
         </div>
 
         <div class="screen hidden" id="submissionScreen">
@@ -48,9 +62,7 @@
                 <input type="text" id="searchInput" placeholder="Song or Artist...">
                 <button id="searchBtn">Search</button>
             </div>
-            
             <div id="searchResults" class="hidden"></div>
-            
             <div id="selectedSong" class="hidden">
                 <h3 id="selTitle" style="color:#f39c12"></h3>
                 <p id="selArtist"></p>
@@ -58,13 +70,11 @@
                 <br>
                 <button id="submitSongBtn" class="host-btn">Submit This Song</button>
             </div>
-            
             <div id="waitingArea" class="hidden" style="margin-top:20px; border-top:1px solid #444; padding-top:10px;">
                 <h3>Waiting for Players...</h3>
                 <p>Submitted: <span id="submittedCount">0</span>/<span id="totalPlayers">0</span></p>
                 <ul id="playerList"></ul>
             </div>
-
             <div class="host-controls hidden" id="hostControls">
                 <button id="startGameBtn" class="host-btn" disabled>Start Game</button>
             </div>
@@ -74,14 +84,14 @@
             <h2>Guess the Song!</h2>
             <div class="progress-container"><div class="progress-bar" id="gameProgress"></div></div>
             <p>Track <span id="trackNum">1</span></p>
-            
             <div id="countdown">15</div>
-            
             <audio id="gameAudio" style="display:none"></audio>
+            
+            <div id="chatBox"></div>
             
             <div id="questionArea">
                 <div style="font-size: 3rem; margin: 20px;">❓</div>
-                <input type="text" id="guessInput" placeholder="Type song or artist..." autocomplete="off">
+                <input type="text" id="guessInput" placeholder="Type guess..." autocomplete="off">
                 <button id="submitGuessBtn">Guess</button>
                 <div id="guessFeedback"></div>
             </div>
@@ -108,17 +118,11 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // --- 1. CONNECT ---
-        const socket = io(); // Connects to Render automatically
-        
+        const socket = io(); 
         let myId = null;
         let selectedTrack = null;
 
-        // --- 2. SOCKET LISTENERS ---
-        socket.on('connect', () => {
-            console.log("Connected!", socket.id);
-            myId = socket.id;
-        });
+        socket.on('connect', () => { myId = socket.id; });
 
         socket.on('playerJoined', (data) => {
             updateLobby(data);
@@ -129,7 +133,6 @@
             const container = document.getElementById('searchResults');
             container.innerHTML = '';
             container.classList.remove('hidden');
-            
             results.forEach(track => {
                 const div = document.createElement('div');
                 div.className = 'song-item';
@@ -147,81 +150,88 @@
 
         socket.on('songSubmitted', (data) => {
             updateLobby(data);
-            // If I am host and everyone is ready, enable start button
             if(data.isReady) document.getElementById('startGameBtn').disabled = false;
         });
 
-        socket.on('gameStarted', (data) => {
-            showScreen('gameScreen');
+        socket.on('gameStarted', (data) => showScreen('gameScreen'));
+
+        // --- CHAT LOGIC ---
+        socket.on('chatMessage', (data) => {
+            const chatBox = document.getElementById('chatBox');
+            const div = document.createElement('div');
+            div.className = 'chat-msg';
+            
+            // Format: "Name: Guess"
+            if(data.type === 'correct') {
+                div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-correct">${data.text}</span>`;
+            } else {
+                div.innerHTML = `<span class="chat-name">${data.name}:</span> <span class="chat-wrong">${data.text}</span>`;
+            }
+            
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to bottom
         });
 
         socket.on('playTrack', (data) => {
-            // Reset UI for new round
             document.getElementById('questionArea').classList.remove('hidden');
             document.getElementById('revealArea').classList.add('hidden');
-            document.getElementById('guessInput').value = '';
-            document.getElementById('guessInput').disabled = false;
+            
+            // RESET ROUND
+            document.getElementById('chatBox').innerHTML = ''; // Clear chat
+            const input = document.getElementById('guessInput');
+            input.value = '';
+            input.disabled = false;
+            input.focus();
+            
             document.getElementById('submitGuessBtn').disabled = false;
             document.getElementById('guessFeedback').textContent = '';
             document.getElementById('trackNum').textContent = data.trackIndex + 1;
             
-            // Play Audio
             const audio = document.getElementById('gameAudio');
             audio.src = data.track.previewUrl;
             audio.volume = 0.5;
-            audio.play().catch(e => console.log("Click page to fix autoplay"));
-
-            // Start Countdown UI
+            audio.play().catch(e => console.log("Autoplay blocked"));
             document.getElementById('countdown').textContent = data.roundCountdown;
         });
 
         socket.on('countdown', (t) => document.getElementById('countdown').textContent = t);
 
         socket.on('roundEnded', (data) => {
-            // Show Answer
             document.getElementById('questionArea').classList.add('hidden');
             document.getElementById('revealArea').classList.remove('hidden');
             document.getElementById('revealTitle').textContent = data.track.title;
             document.getElementById('revealArtist').textContent = data.track.artist;
             document.getElementById('revealSubmitter').textContent = "Picked by: " + data.submitterName;
             document.getElementById('albumArt').src = data.track.albumArt || '';
-            
-            // Stop Audio
             document.getElementById('gameAudio').pause();
-            
-            // Update Scores
             updateScores(data.scores, 'scoreList');
         });
 
-socket.on('guessResult', (data) => {
+        socket.on('guessResult', (data) => {
             const fb = document.getElementById('guessFeedback');
             const input = document.getElementById('guessInput');
-            const btn = document.getElementById('submitGuessBtn');
             
             if(data.correct) {
-                // CORRECT: Lock everything so they can't spam points
                 fb.textContent = `✅ Correct! +${data.points} Points`;
                 fb.className = "guess-correct";
-                input.disabled = true; 
-                btn.disabled = true;
+                input.disabled = true;
+                document.getElementById('submitGuessBtn').disabled = true;
             } else {
-                // WRONG: Force Unlock everything
-                fb.textContent = data.message ? "⚠️ " + data.message : "❌ Wrong! Try again.";
+                fb.textContent = data.message ? "⚠️ " + data.message : "❌ Wrong!";
                 fb.className = "guess-incorrect";
-                
-                // CRITICAL FIX: Explicitly enable controls again
-                input.disabled = false; 
-                btn.disabled = false;
-                
-                // Clear the box so they can type fresh (easier than selecting)
                 input.value = ''; 
+                input.disabled = false;
                 input.focus();
             }
         });
 
-        // --- 3. BUTTON ACTIONS & ENTER KEY SUPPORT ---
+        socket.on('gameFinished', (data) => {
+            showScreen('resultsScreen');
+            updateScores(data.scores, 'finalScoreList');
+        });
         
-        // Helper to simulate button click on Enter key
+        socket.on('playAgainStarted', () => location.reload());
+
         function addEnterKey(inputId, btnId) {
             const input = document.getElementById(inputId);
             if(input) {
@@ -233,53 +243,40 @@ socket.on('guessResult', (data) => {
                 });
             }
         }
-
-        // Attach Enter keys
         addEnterKey("playerName", "joinBtn");
         addEnterKey("searchInput", "searchBtn");
         addEnterKey("guessInput", "submitGuessBtn");
 
         document.getElementById('joinBtn').onclick = () => {
             const name = document.getElementById('playerName').value;
-            if(name) {
-                socket.emit('joinGame', name);
-                showScreen('submissionScreen');
-            }
+            if(name) { socket.emit('joinGame', name); showScreen('submissionScreen'); }
         };
-
         document.getElementById('searchBtn').onclick = () => {
             const query = document.getElementById('searchInput').value;
             if(query) socket.emit('searchSongs', query);
         };
-
         document.getElementById('submitSongBtn').onclick = () => {
             if(selectedTrack) {
                 socket.emit('submitSong', selectedTrack);
-                document.getElementById('selectedSong').innerHTML = "<h3>Song Submitted! Waiting for others...</h3>";
+                document.getElementById('selectedSong').innerHTML = "<h3>Song Submitted! Waiting...</h3>";
                 document.getElementById('searchResults').classList.add('hidden');
                 document.getElementById('waitingArea').classList.remove('hidden');
             }
         };
-
         document.getElementById('startGameBtn').onclick = () => socket.emit('startGame');
-        
         document.getElementById('submitGuessBtn').onclick = () => {
             const guess = document.getElementById('guessInput').value;
             if(guess) socket.emit('submitGuess', guess);
         };
-        
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
 
-        // --- 4. HELPERS ---
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
         }
-
         function updateLobby(data) {
             document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0;
             document.getElementById('totalPlayers').textContent = Object.keys(data.players).length;
-            
             const list = document.getElementById('playerList');
             list.innerHTML = '';
             Object.values(data.players).forEach(p => {
@@ -288,11 +285,9 @@ socket.on('guessResult', (data) => {
                 list.appendChild(li);
             });
         }
-
         function updateScores(scores, listId) {
             const list = document.getElementById(listId);
             list.innerHTML = '';
-            // Sort by score
             const sorted = Object.values(scores).sort((a,b) => b.score - a.score);
             sorted.forEach(p => {
                 const li = document.createElement('li');
