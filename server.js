@@ -38,15 +38,18 @@ let gameState = 'lobby';
 let currentRoundIndex = 0;
 let roundTimer = null;
 let roundStartTime = 0; 
-let roundWinners = new Set(); 
+let roundWinners = new Set();
+let isRoundActive = false; 
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    socket.on('joinGame', (nameInput) => {
-        const cleanName = (nameInput || "").trim();
-        
-        // --- 1. NEW: DUPLICATE NAME CHECK ---
+    // UPDATED: Now accepts an object { name, color }
+    socket.on('joinGame', (data) => {
+        let nameInput = data.name || "";
+        let colorInput = data.color || "#3498db";
+
+        const cleanName = nameInput.trim();
         const isTaken = Object.values(players).some(p => p.name.toLowerCase() === cleanName.toLowerCase());
         
         if (isTaken) {
@@ -54,10 +57,10 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Add Player
         players[socket.id] = {
             id: socket.id,
             name: cleanName || `Player ${socket.id.substr(0,4)}`,
+            color: colorInput, // Store the color
             score: 0,
             hasSubmitted: false
         };
@@ -107,30 +110,48 @@ io.on('connection', (socket) => {
     });
 
     socket.on('submitGuess', (guess) => {
-        if (gameState !== 'playing' || !gameQueue[currentRoundIndex]) return;
+        if (gameState !== 'playing') return;
+
+        const player = players[socket.id];
+        const playerName = player.name;
+        const playerColor = player.color; // Get color
+        
+        // CASE 1: BETWEEN ROUNDS (Just Chat)
+        if (!isRoundActive) {
+            io.emit('chatMessage', { name: playerName, text: guess, type: 'chat', color: playerColor });
+            socket.emit('guessResult', { correct: true, points: 0, silent: true });
+            return;
+        }
 
         const currentTrack = gameQueue[currentRoundIndex];
-        const playerName = players[socket.id].name;
         const clean = (str) => (str || "").toLowerCase().replace(/[^\w\s]/gi, '').trim();
         const userGuess = clean(guess);
         const title = clean(currentTrack.trackName);
         const artist = clean(currentTrack.artistName);
 
+        // CASE 2: ALREADY WON (Winner Chat)
         if (roundWinners.has(socket.id)) {
             if (userGuess.includes(title) || title.includes(userGuess)) {
-                 socket.emit('guessResult', { correct: true, points: 0, message: "Don't spoil the answer!" });
+                 socket.emit('guessResult', { correct: true, points: 0, message: "Don't spoil it!" });
             } else {
-                 io.emit('chatMessage', { name: playerName, text: guess, type: 'winner-chat' });
+                 io.emit('chatMessage', { name: playerName, text: guess, type: 'winner-chat', color: playerColor });
                  socket.emit('guessResult', { correct: true, points: 0, silent: true });
             }
             return;
         }
 
+        // CASE 3: SUBMITTER (DJ Chat)
         if (socket.id === currentTrack.submitterId) {
-             socket.emit('guessResult', { correct: false, message: "You can't guess your own song!" });
+             if (userGuess.includes(title) || title.includes(userGuess)) {
+                 socket.emit('guessResult', { correct: false, message: "Don't spoil your own song!" });
+             } else {
+                 io.emit('chatMessage', { name: playerName, text: guess, type: 'dj-chat', color: playerColor });
+                 socket.emit('guessResult', { correct: true, points: 0, silent: true });
+             }
              return;
         }
 
+        // CASE 4: NORMAL GUESS
         const isTitleMatch = (userGuess.length > 2 && title.includes(userGuess)) || userGuess === title;
         const isArtistMatch = (userGuess.length > 2 && artist.includes(userGuess)) || userGuess === artist;
         const titleDist = levenshtein(userGuess, title);
@@ -142,24 +163,19 @@ io.on('connection', (socket) => {
             let pointsEarned = Math.max(5, Math.ceil(30 - elapsedSeconds));
             
             players[socket.id].score += pointsEarned;
-            if(players[currentTrack.submitterId]) {
-                players[currentTrack.submitterId].score += 3;
-            }
+            if(players[currentTrack.submitterId]) players[currentTrack.submitterId].score += 3;
 
             roundWinners.add(socket.id);
             socket.emit('guessResult', { correct: true, points: pointsEarned });
-            io.emit('chatMessage', { name: playerName, text: `Guessed correctly! (+${pointsEarned} pts)`, type: 'correct' });
+            io.emit('chatMessage', { name: playerName, text: `Guessed correctly! (+${pointsEarned})`, type: 'correct', color: playerColor });
 
             const totalPossibleGuessers = Object.keys(players).length - 1;
             if (roundWinners.size >= totalPossibleGuessers && totalPossibleGuessers > 0) {
-                setTimeout(() => {
-                    clearInterval(roundTimer);
-                    endRound();
-                }, 1000);
+                setTimeout(() => { clearInterval(roundTimer); endRound(); }, 1000);
             }
         } else {
             socket.emit('guessResult', { correct: false });
-            io.emit('chatMessage', { name: playerName, text: guess, type: 'wrong' });
+            io.emit('chatMessage', { name: playerName, text: guess, type: 'wrong', color: playerColor });
         }
     });
     
@@ -169,6 +185,7 @@ io.on('connection', (socket) => {
         roundWinners.clear();
         Object.values(players).forEach(p => p.hasSubmitted = false);
         gameState = 'lobby';
+        isRoundActive = false;
         io.emit('playAgainStarted');
     });
 
@@ -184,11 +201,13 @@ io.on('connection', (socket) => {
 function startRound() {
     if (currentRoundIndex >= gameQueue.length) {
         io.emit('gameFinished', { scores: players });
+        isRoundActive = false;
         return;
     }
     roundWinners.clear();
     const track = gameQueue[currentRoundIndex];
     roundStartTime = Date.now();
+    isRoundActive = true; 
     
     io.emit('playTrack', {
         trackIndex: currentRoundIndex,
@@ -210,6 +229,7 @@ function startRound() {
 }
 
 function endRound() {
+    isRoundActive = false; 
     const track = gameQueue[currentRoundIndex];
     io.emit('roundEnded', {
         track: { title: track.trackName, artist: track.artistName, albumArt: track.albumArt },
