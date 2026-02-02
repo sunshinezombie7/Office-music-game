@@ -178,10 +178,10 @@ function startRound() {
     io.emit('playTrack', {
         trackIndex: currentRoundIndex,
         totalTracks: gameQueue.length,
-        roundCountdown: 15,
+        roundCountdown: 30,
         track: { previewUrl: track.previewUrl }
     });
-    let timeLeft = 15;
+    let timeLeft = 30;
     roundTimer = setInterval(() => {
         timeLeft--;
         io.emit('countdown', timeLeft);
