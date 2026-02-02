@@ -106,13 +106,10 @@ io.on('connection', (socket) => {
 
         // 1. ALREADY WON? TREAT AS CHAT
         if (roundWinners.has(socket.id)) {
-            // Spoiler check: Don't let winners type the answer again!
             if (userGuess.includes(title) || title.includes(userGuess)) {
                  socket.emit('guessResult', { correct: true, points: 0, message: "Don't spoil the answer!" });
             } else {
-                 // Broadcast as "Winner Chat" (Green Text)
                  io.emit('chatMessage', { name: playerName, text: guess, type: 'winner-chat' });
-                 // Tell client it was sent successfully (clears box)
                  socket.emit('guessResult', { correct: true, points: 0, silent: true });
             }
             return;
@@ -131,21 +128,33 @@ io.on('connection', (socket) => {
         const allowedTypos = Math.max(2, Math.floor(title.length * 0.4));
 
         if (isTitleMatch || isArtistMatch || titleDist <= allowedTypos) {
-            // CORRECT!
+            // GUESSER REWARD
             players[socket.id].score += 10;
-            if(players[currentTrack.submitterId]) players[currentTrack.submitterId].score += 2;
+            
+            // SUBMITTER REWARD: +3 points per correct guess
+            if(players[currentTrack.submitterId]) {
+                players[currentTrack.submitterId].score += 3;
+            }
+
             roundWinners.add(socket.id);
             
             socket.emit('guessResult', { correct: true, points: 10 });
-            
-            // Broadcast: "Alex guessed correctly!"
             io.emit('chatMessage', { name: playerName, text: "Guessed the answer!", type: 'correct' });
+
+            // --- END ROUND EARLY LOGIC ---
+            // Everyone except the submitter
+            const totalPossibleGuessers = Object.keys(players).length - 1;
+            
+            if (roundWinners.size >= totalPossibleGuessers && totalPossibleGuessers > 0) {
+                setTimeout(() => {
+                    clearInterval(roundTimer);
+                    endRound();
+                }, 1000);
+            }
             
         } else {
             // WRONG!
             socket.emit('guessResult', { correct: false });
-            
-            // Broadcast wrong guess to everyone
             io.emit('chatMessage', { name: playerName, text: guess, type: 'wrong' });
         }
     });
@@ -178,7 +187,7 @@ function startRound() {
     io.emit('playTrack', {
         trackIndex: currentRoundIndex,
         totalTracks: gameQueue.length,
-        roundCountdown: 30,
+        roundCountdown: 30, // 30 second timer
         track: { previewUrl: track.previewUrl }
     });
     let timeLeft = 30;
