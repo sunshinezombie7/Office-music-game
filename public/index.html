@@ -93,4 +93,209 @@
                 <p id="revealSubmitter" style="color:#9b59b6; font-style:italic;">Picked by: ???</p>
             </div>
 
-            <div id="scoreboard" style="margin-top
+            <div id="scoreboard" style="margin-top: 30px; text-align: left;">
+                <h3>Scores</h3>
+                <ul id="scoreList"></ul>
+            </div>
+        </div>
+
+        <div class="screen hidden" id="resultsScreen">
+            <h2>Game Over!</h2>
+            <ul id="finalScoreList"></ul>
+            <button id="playAgainBtn" class="host-btn">Play Again</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // --- 1. CONNECT ---
+        const socket = io(); // Connects to Render automatically
+        
+        let myId = null;
+        let selectedTrack = null;
+
+        // --- 2. SOCKET LISTENERS ---
+        socket.on('connect', () => {
+            console.log("Connected!", socket.id);
+            myId = socket.id;
+        });
+
+        socket.on('playerJoined', (data) => {
+            updateLobby(data);
+            if(data.hostId === myId) document.getElementById('hostControls').classList.remove('hidden');
+        });
+
+        socket.on('searchResults', (results) => {
+            const container = document.getElementById('searchResults');
+            container.innerHTML = '';
+            container.classList.remove('hidden');
+            
+            results.forEach(track => {
+                const div = document.createElement('div');
+                div.className = 'song-item';
+                div.innerHTML = `<strong>${track.trackName}</strong> - ${track.artistName}`;
+                div.onclick = () => {
+                    selectedTrack = track;
+                    document.getElementById('selectedSong').classList.remove('hidden');
+                    document.getElementById('selTitle').textContent = track.trackName;
+                    document.getElementById('selArtist').textContent = track.artistName;
+                    document.getElementById('previewAudio').src = track.previewUrl;
+                };
+                container.appendChild(div);
+            });
+        });
+
+        socket.on('songSubmitted', (data) => {
+            updateLobby(data);
+            // If I am host and everyone is ready, enable start button
+            if(data.isReady) document.getElementById('startGameBtn').disabled = false;
+        });
+
+        socket.on('gameStarted', (data) => {
+            showScreen('gameScreen');
+        });
+
+        socket.on('playTrack', (data) => {
+            // Reset UI for new round
+            document.getElementById('questionArea').classList.remove('hidden');
+            document.getElementById('revealArea').classList.add('hidden');
+            document.getElementById('guessInput').value = '';
+            document.getElementById('guessInput').disabled = false;
+            document.getElementById('submitGuessBtn').disabled = false;
+            document.getElementById('guessFeedback').textContent = '';
+            document.getElementById('trackNum').textContent = data.trackIndex + 1;
+            
+            // Play Audio
+            const audio = document.getElementById('gameAudio');
+            audio.src = data.track.previewUrl;
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log("Click page to fix autoplay"));
+
+            // Start Countdown UI
+            document.getElementById('countdown').textContent = data.roundCountdown;
+        });
+
+        socket.on('countdown', (t) => document.getElementById('countdown').textContent = t);
+
+        socket.on('roundEnded', (data) => {
+            // Show Answer
+            document.getElementById('questionArea').classList.add('hidden');
+            document.getElementById('revealArea').classList.remove('hidden');
+            document.getElementById('revealTitle').textContent = data.track.title;
+            document.getElementById('revealArtist').textContent = data.track.artist;
+            document.getElementById('revealSubmitter').textContent = "Picked by: " + data.submitterName;
+            document.getElementById('albumArt').src = data.track.albumArt || '';
+            
+            // Stop Audio
+            document.getElementById('gameAudio').pause();
+            
+            // Update Scores
+            updateScores(data.scores, 'scoreList');
+        });
+
+        socket.on('guessResult', (data) => {
+            const fb = document.getElementById('guessFeedback');
+            if(data.correct) {
+                fb.textContent = "✅ Correct! +10 Points";
+                fb.className = "guess-correct";
+                document.getElementById('guessInput').disabled = true;
+                document.getElementById('submitGuessBtn').disabled = true;
+            } else {
+                fb.textContent = "❌ Wrong!";
+                fb.className = "guess-incorrect";
+            }
+        });
+
+        socket.on('gameFinished', (data) => {
+            showScreen('resultsScreen');
+            updateScores(data.scores, 'finalScoreList');
+        });
+        
+        socket.on('playAgainStarted', () => {
+            location.reload();
+        });
+
+        // --- 3. BUTTON ACTIONS & ENTER KEY SUPPORT ---
+        
+        // Helper to simulate button click on Enter key
+        function addEnterKey(inputId, btnId) {
+            const input = document.getElementById(inputId);
+            if(input) {
+                input.addEventListener("keypress", function(event) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        document.getElementById(btnId).click();
+                    }
+                });
+            }
+        }
+
+        // Attach Enter keys
+        addEnterKey("playerName", "joinBtn");
+        addEnterKey("searchInput", "searchBtn");
+        addEnterKey("guessInput", "submitGuessBtn");
+
+        document.getElementById('joinBtn').onclick = () => {
+            const name = document.getElementById('playerName').value;
+            if(name) {
+                socket.emit('joinGame', name);
+                showScreen('submissionScreen');
+            }
+        };
+
+        document.getElementById('searchBtn').onclick = () => {
+            const query = document.getElementById('searchInput').value;
+            if(query) socket.emit('searchSongs', query);
+        };
+
+        document.getElementById('submitSongBtn').onclick = () => {
+            if(selectedTrack) {
+                socket.emit('submitSong', selectedTrack);
+                document.getElementById('selectedSong').innerHTML = "<h3>Song Submitted! Waiting for others...</h3>";
+                document.getElementById('searchResults').classList.add('hidden');
+                document.getElementById('waitingArea').classList.remove('hidden');
+            }
+        };
+
+        document.getElementById('startGameBtn').onclick = () => socket.emit('startGame');
+        
+        document.getElementById('submitGuessBtn').onclick = () => {
+            const guess = document.getElementById('guessInput').value;
+            if(guess) socket.emit('submitGuess', guess);
+        };
+        
+        document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
+
+        // --- 4. HELPERS ---
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function updateLobby(data) {
+            document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0;
+            document.getElementById('totalPlayers').textContent = Object.keys(data.players).length;
+            
+            const list = document.getElementById('playerList');
+            list.innerHTML = '';
+            Object.values(data.players).forEach(p => {
+                const li = document.createElement('li');
+                li.innerHTML = `${p.name} ${p.hasSubmitted ? '✅' : '⏳'}`;
+                list.appendChild(li);
+            });
+        }
+
+        function updateScores(scores, listId) {
+            const list = document.getElementById(listId);
+            list.innerHTML = '';
+            // Sort by score
+            const sorted = Object.values(scores).sort((a,b) => b.score - a.score);
+            sorted.forEach(p => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>${p.name}</span> <span>${p.score} pts</span>`;
+                list.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
