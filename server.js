@@ -1,484 +1,266 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Not Songlio: Retro Edition</title>
-    <style>
-        /* --- RETRO SYNTHWAVE THEME --- */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Courier New', Courier, monospace; 
-            background: #120428; 
-            color: #fff; 
-            padding: 20px; 
-            text-align: center; 
-            padding-bottom: 200px; 
-        } 
-        .container { max-width: 800px; margin: 0 auto; }
-        
-        h1 { 
-            color: #ffffff;
-            text-shadow: 4px 4px 0px #ff00ff; 
-            margin-bottom: 30px; 
-            font-size: 3rem;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            font-weight: 900;
-            border-bottom: 2px solid #ff00ff;
-            padding-bottom: 10px;
-            display: inline-block;
-        }
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const axios = require('axios');
+const path = require('path');
 
-        .screen { 
-            background: #000; 
-            padding: 25px; 
-            margin: 20px 0; 
-            border: 2px solid #00ffff; 
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
-        }
-        
-        .hidden { display: none !important; }
-
-        input[type="text"] { 
-            padding: 15px; 
-            width: 70%; 
-            border: 2px solid #ff00ff; 
-            background: #220022; 
-            color: #00ffff; 
-            font-family: 'Courier New', monospace;
-            font-size: 1.2rem;
-            outline: none;
-        }
-        input::placeholder { color: #884488; }
-
-        button { 
-            padding: 15px 25px; 
-            border: none; 
-            cursor: pointer; 
-            font-weight: bold; 
-            margin: 5px; 
-            background: #00ffff; 
-            color: #000; 
-            font-family: 'Courier New', monospace;
-            text-transform: uppercase;
-            font-size: 1rem;
-            transition: all 0.1s;
-        }
-        button:hover { background: #fff; transform: scale(1.05); }
-        button:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
-        
-        button.host-btn { background: #ff00ff; color: #fff; }
-        button.danger-btn { background: #ff3333; color: #fff; padding: 2px 8px; font-size: 0.8rem; margin: 0 0 0 10px; }
-
-        .song-item { background: #1a1a1a; padding: 10px; margin: 5px 0; cursor: pointer; border: 1px solid #333; text-align: left; }
-        .song-item:hover { background: #222; border-color: #00ffff; }
-        .song-item.selected { border-left: 8px solid #ff00ff; background: #220022; }
-
-        #playerList li, #scoreList li, #runnerUpList li { 
-            background: #000; 
-            border-bottom: 1px solid #333;
-            padding: 10px; 
-            margin: 5px 0; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-        }
-
-        .progress-container { width: 100%; height: 15px; background: #333; margin: 15px 0; border: 1px solid #fff; }
-        .progress-bar { height: 100%; background: #00ffff; width: 0%; transition: width 0.5s; }
-
-        #countdown { font-size: 3rem; font-weight: bold; color: #ff00ff; margin: 10px 0; text-shadow: 2px 2px #000; }
-        
-        .guess-correct { color: #00ff00; font-weight: bold; margin: 10px; font-size: 1.2rem; text-transform: uppercase; }
-        .guess-incorrect { color: #ff3333; font-weight: bold; margin: 10px; text-transform: uppercase; }
-        
-        #bottomPanel { 
-            position: fixed; bottom: 0; left: 0; width: 100%; 
-            background: #000; 
-            border-top: 4px solid #ff00ff; 
-            padding: 10px; z-index: 100; 
-            display: flex; flex-direction: column; align-items: center; 
-        }
-        #chatBox { 
-            width: 90%; max-width: 800px; height: 120px; 
-            overflow-y: auto; background: #111; 
-            border: 1px solid #333; 
-            padding: 10px; margin-bottom: 10px; text-align: left; 
-            font-size: 0.9rem;
-        }
-        #inputRow { width: 100%; max-width: 800px; display: flex; gap: 10px; }
-        #inputRow input { flex: 1; }
-        
-        .chat-msg { margin: 2px 0; }
-        .chat-name { font-weight: bold; text-transform: uppercase; }
-        .chat-correct { color: #00ff00; }
-        .chat-winner { color: #ffff00; }
-        .chat-dj { color: #ff00ff; }
-        .chat-wrong { color: #666; }
-        .input-winner { border: 2px solid #00ff00 !important; color: #00ff00 !important; }
-
-        /* NEON PODIUM */
-        .podium-container { display: flex; justify-content: center; align-items: flex-end; height: 300px; margin-bottom: 30px; gap: 10px; }
-        .pillar { 
-            display: flex; flex-direction: column; justify-content: flex-end; align-items: center; 
-            width: 100px; 
-            border: 3px solid #fff; 
-            color: #000; font-weight: bold; text-align: center; padding-bottom: 10px; position: relative; 
-        }
-        .pillar-name { position: absolute; top: -40px; width: 100%; color: #fff; font-size: 1.1rem; font-weight: bold; text-shadow: 2px 2px #000; }
-        .pillar-score { font-size: 1.5rem; }
-        .rank-label { font-size: 2rem; opacity: 0.5; margin-bottom: 10px; font-weight: bold;}
-        
-        .gold { background: #ffff00; height: 220px; order: 2; z-index: 10; box-shadow: 0 0 30px #ffff00; border-color: #ffff00; }
-        .silver { background: #00ffff; height: 160px; order: 1; box-shadow: 0 0 20px #00ffff; border-color: #00ffff; }
-        .bronze { background: #ff00ff; height: 110px; order: 3; box-shadow: 0 0 20px #ff00ff; border-color: #ff00ff; }
-        
-        #activeSubmitter { font-style: italic; color: #ff00ff; margin-bottom: 10px; }
-        .status-message { color: #ff3333; margin-top: 10px; font-weight: bold; display: none; }
-
-        .color-options { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
-        .color-dot { width: 30px; height: 30px; border: 2px solid #000; cursor: pointer; transition: transform 0.2s; } 
-        .color-dot:hover { transform: scale(1.2); border-color: #fff; }
-        .color-dot.selected { border: 3px solid #fff; transform: scale(1.1); box-shadow: 0 0 10px #fff; }
-        .player-dot { width: 12px; height: 12px; margin-right: 10px; display: inline-block; border: 1px solid #fff; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>NOT SONGLIO</h1>
-        
-        <div class="screen" id="loginScreen">
-            <h2>CHOOSE YOUR CHARACTER</h2>
-            <input type="text" id="playerName" placeholder="ENTER NAME..." maxlength="15">
-            <p style="margin: 15px 0 5px; font-size: 0.8rem; color: #00ffff;">SELECT COLOR:</p>
-            <div class="color-options" id="colorPicker"></div>
-            <br>
-            <button id="joinBtn">START GAME</button>
-            <div id="loginStatus" class="status-message"></div>
-        </div>
-
-        <div class="screen hidden" id="submissionScreen">
-            <h2>SELECT TRACK</h2>
-            <div style="margin-bottom: 15px;">
-                <input type="text" id="searchInput" placeholder="ARTIST OR TITLE...">
-                <button id="searchBtn">SEARCH</button>
-            </div>
-            <div id="searchResults" class="hidden"></div>
-            <div id="selectedSong" class="hidden">
-                <h3 id="selTitle" style="color:#ffff00"></h3>
-                <p id="selArtist"></p>
-                <audio id="previewAudio" controls style="width: 100%; margin: 10px 0;"></audio>
-                <br>
-                <button id="submitSongBtn" class="host-btn">CONFIRM SELECTION</button>
-            </div>
-            <div id="waitingArea" class="hidden" style="margin-top:20px; border-top:1px solid #444; padding-top:10px;">
-                <h3>WAITING FOR PLAYERS...</h3>
-                <p>READY: <span id="submittedCount">0</span>/<span id="totalPlayers">0</span></p>
-                <ul id="playerList"></ul>
-            </div>
-            <div class="host-controls hidden" id="hostControls">
-                <button id="startGameBtn" class="host-btn" disabled>INITIATE GAME</button>
-            </div>
-        </div>
-        
-        <div class="screen hidden" id="gameScreen">
-            <h2>GUESS THE TRACK</h2>
-            <div class="progress-container"><div class="progress-bar" id="gameProgress"></div></div>
-            <p>TRACK <span id="trackNum">1</span></p>
-            <p id="activeSubmitter">DJ: ???</p>
-            <div id="countdown">30</div>
-            <audio id="gameAudio" style="display:none"></audio>
-            
-            <div id="revealArea" class="hidden">
-                <img id="albumArt" src="" style="width:150px; border: 2px solid #fff;">
-                <h3 id="revealTitle" style="color:#ffff00; margin-top:10px;">TITLE</h3>
-                <p id="revealArtist" style="color:#00ffff">ARTIST</p>
-                <p id="revealSubmitter" style="color:#ff00ff; font-style:italic;">CHOSEN BY: ???</p>
-            </div>
-            
-            <div id="scoreboard" style="margin-top: 30px; text-align: left;">
-                <h3 style="border-bottom: 2px solid #fff; padding-bottom: 5px;">HIGH SCORES</h3>
-                <ul id="scoreList"></ul>
-            </div>
-        </div>
-
-        <div class="screen hidden" id="resultsScreen">
-            <h2>🏆 GAME OVER 🏆</h2>
-            <div id="podium" class="podium-container"></div>
-            <div id="runnerUps" style="text-align: left; margin-top: 30px;">
-                <h3>RANKINGS</h3>
-                <ul id="runnerUpList"></ul>
-            </div>
-            <button id="playAgainBtn" class="host-btn" style="margin-top: 20px;">CONTINUE?</button>
-        </div>
-    </div>
-
-    <div id="bottomPanel" class="hidden">
-        <div id="chatBox"></div>
-        <div id="inputRow">
-            <input type="text" id="guessInput" placeholder="ENTER GUESS..." autocomplete="off">
-            <button id="submitGuessBtn">SEND</button>
-        </div>
-        <div id="guessFeedback" style="height: 20px; margin-top: 5px; font-weight: bold;"></div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io(); 
-        let myId = null;
-        let selectedTrack = null;
-        let myColor = '#00ffff'; 
-
-        const colors = ['#ff00ff', '#00ffff', '#ffff00', '#00ff00', '#ff9900', '#bd00ff', '#ff3333', '#ffffff'];
-        
-        const picker = document.getElementById('colorPicker');
-        if (picker) {
-            picker.innerHTML = ''; 
-            colors.forEach(c => {
-                const dot = document.createElement('div');
-                dot.className = 'color-dot';
-                dot.style.backgroundColor = c;
-                dot.onclick = () => {
-                    Array.from(picker.children).forEach(d => d.classList.remove('selected'));
-                    dot.classList.add('selected');
-                    myColor = c;
-                };
-                picker.appendChild(dot);
-            });
-            if (picker.children.length > 0) {
-                picker.children[0].classList.add('selected');
-                myColor = colors[0];
-            }
-        }
-
-        socket.on('connect', () => { myId = socket.id; });
-        socket.on('playerJoined', (data) => {
-            updateLobby(data);
-            if(data.hostId === myId) document.getElementById('hostControls').classList.remove('hidden');
-        });
-        socket.on('loginError', (msg) => { const el = document.getElementById('loginStatus'); el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000); });
-        socket.on('searchResults', (results) => {
-            const container = document.getElementById('searchResults');
-            container.innerHTML = '';
-            container.classList.remove('hidden');
-            results.forEach(track => {
-                const div = document.createElement('div');
-                div.className = 'song-item';
-                div.innerHTML = `<strong>${track.trackName}</strong> - ${track.artistName}`;
-                div.onclick = () => {
-                    selectedTrack = track;
-                    document.getElementById('selectedSong').classList.remove('hidden');
-                    document.getElementById('selTitle').textContent = track.trackName;
-                    document.getElementById('selArtist').textContent = track.artistName;
-                    document.getElementById('previewAudio').src = track.previewUrl;
-                };
-                container.appendChild(div);
-            });
-        });
-        socket.on('songSubmitted', (data) => {
-            updateLobby(data);
-            if(data.isReady) document.getElementById('startGameBtn').disabled = false;
-        });
-        
-        socket.on('gameStarted', (data) => {
-            showScreen('gameScreen');
-            document.getElementById('bottomPanel').classList.remove('hidden');
-        });
-
-        socket.on('chatMessage', (data) => {
-            const chatBox = document.getElementById('chatBox');
-            const div = document.createElement('div');
-            div.className = 'chat-msg';
-            const nameSpan = `<span class="chat-name" style="color: ${data.color || '#00ffff'}">${data.name}:</span>`;
-            if(data.type === 'correct') {
-                div.innerHTML = `${nameSpan} <span class="chat-correct">${data.text}</span>`;
-            } else if (data.type === 'winner-chat') {
-                div.innerHTML = `${nameSpan} <span class="chat-winner">${data.text}</span>`;
-            } else if (data.type === 'dj-chat') {
-                div.innerHTML = `${nameSpan} <span class="chat-dj">${data.text}</span>`;
+// Levenshtein for typos
+const levenshtein = (a, b) => {
+    if(a.length == 0) return b.length; 
+    if(b.length == 0) return a.length; 
+    var matrix = [];
+    var i;
+    for(i = 0; i <= b.length; i++){ matrix[i] = [i]; }
+    var j;
+    for(j = 0; j <= a.length; j++){ matrix[0][j] = j; }
+    for(i = 1; i <= b.length; i++){
+        for(j = 1; j <= a.length; j++){
+            if(b.charAt(i-1) == a.charAt(j-1)){
+                matrix[i][j] = matrix[i-1][j-1];
             } else {
-                div.innerHTML = `${nameSpan} <span class="chat-wrong">${data.text}</span>`;
+                matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1));
             }
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        });
-
-        socket.on('playTrack', (data) => {
-            document.getElementById('revealArea').classList.add('hidden');
-            const chatBox = document.getElementById('chatBox');
-            const separator = document.createElement('div');
-            separator.style.cssText = "text-align: center; opacity: 0.5; margin: 10px 0; font-size: 0.8rem; border-top: 1px solid #333; padding-top: 5px; color: #ff00ff;";
-            separator.textContent = `--- ROUND ${data.trackIndex + 1} ---`;
-            chatBox.appendChild(separator);
-            document.getElementById('activeSubmitter').textContent = "DJ: " + data.submitterName;
-            const input = document.getElementById('guessInput');
-            input.value = '';
-            input.disabled = false;
-            input.classList.remove('input-winner');
-            input.placeholder = "ENTER GUESS...";
-            input.focus();
-            document.getElementById('guessFeedback').textContent = '';
-            document.getElementById('trackNum').textContent = data.trackIndex + 1;
-            const audio = document.getElementById('gameAudio');
-            audio.src = data.track.previewUrl;
-            audio.volume = 0.5;
-            audio.play().catch(e => console.log("Autoplay blocked"));
-            document.getElementById('countdown').textContent = data.roundCountdown;
-        });
-
-        socket.on('countdown', (t) => document.getElementById('countdown').textContent = t);
-        
-        socket.on('roundEnded', (data) => {
-            document.getElementById('revealArea').classList.remove('hidden');
-            document.getElementById('revealTitle').textContent = data.track.title;
-            document.getElementById('revealArtist').textContent = data.track.artist;
-            document.getElementById('revealSubmitter').textContent = "CHOSEN BY: " + data.submitterName;
-            document.getElementById('albumArt').src = data.track.albumArt || '';
-            document.getElementById('gameAudio').pause();
-            updateScores(data.scores, 'scoreList');
-            const input = document.getElementById('guessInput');
-            input.placeholder = "ROUND OVER. CHAT ENABLED.";
-        });
-
-        socket.on('guessResult', (data) => {
-            const fb = document.getElementById('guessFeedback');
-            const input = document.getElementById('guessInput');
-            if(data.silent) { input.value = ''; input.focus(); return; }
-            if(data.correct) {
-                fb.textContent = `✅ CORRECT! +${data.points}`;
-                fb.className = "guess-correct";
-                input.classList.add('input-winner');
-                input.placeholder = "CHAT MODE ACTIVATED...";
-                input.value = '';
-                input.focus();
-            } else {
-                fb.textContent = data.message ? "⚠️ " + data.message : "❌ INCORRECT";
-                fb.className = "guess-incorrect";
-                input.value = ''; 
-                input.disabled = false;
-                input.focus();
-            }
-        });
-
-        socket.on('gameFinished', (data) => {
-            showScreen('resultsScreen');
-            
-            const duration = 3000;
-            const end = Date.now() + duration;
-            (function frame() {
-                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff00ff', '#00ffff'] });
-                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff00ff', '#00ffff'] });
-                if (Date.now() < end) requestAnimationFrame(frame);
-            }());
-
-            const podium = document.getElementById('podium');
-            const runnerList = document.getElementById('runnerUpList');
-            podium.innerHTML = '';
-            runnerList.innerHTML = '';
-            const allPlayers = Object.values(data.scores).sort((a,b) => b.score - a.score);
-            const top3 = allPlayers.slice(0, 3);
-            
-            const createPillar = (player, rankClass, rankNum) => {
-                if(!player) return;
-                const div = document.createElement('div');
-                div.className = `pillar ${rankClass}`;
-                div.innerHTML = `<div class="pillar-name" style="color:${player.color}">${player.name}</div><div class="rank-label">${rankNum}</div><div class="pillar-score">${player.score}</div>`;
-                podium.appendChild(div);
-            };
-            createPillar(top3[1], 'silver', '2ND');
-            createPillar(top3[0], 'gold', '1ST');
-            createPillar(top3[2], 'bronze', '3RD');
-            
-            const rest = allPlayers.slice(3);
-            if(rest.length === 0) { document.getElementById('runnerUps').classList.add('hidden'); } 
-            else { document.getElementById('runnerUps').classList.remove('hidden'); rest.forEach((p, index) => { 
-                const li = document.createElement('li'); 
-                li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>#${index + 4} ${p.name}</span> <span>${p.score} PTS</span>`; 
-                runnerList.appendChild(li); 
-            }); }
-        });
-        
-        // --- NEW: RESET GAME WITHOUT RELOAD ---
-        socket.on('resetGame', (data) => {
-            // Clear local Song data
-            selectedTrack = null;
-            document.getElementById('searchInput').value = '';
-            document.getElementById('searchResults').classList.add('hidden');
-            document.getElementById('selectedSong').classList.add('hidden');
-            document.getElementById('waitingArea').classList.add('hidden');
-            document.getElementById('startGameBtn').disabled = true;
-            
-            // Switch to Song Select
-            showScreen('submissionScreen');
-            
-            // Refresh the lobby list
-            updateLobby(data);
-        });
-
-        function addEnterKey(inputId, btnId) {
-            const input = document.getElementById(inputId);
-            if(input) { input.addEventListener("keypress", function(event) { if (event.key === "Enter") { event.preventDefault(); document.getElementById(btnId).click(); } }); }
         }
-        addEnterKey("playerName", "joinBtn");
-        addEnterKey("searchInput", "searchBtn");
-        addEnterKey("guessInput", "submitGuessBtn");
+    }
+    return matrix[b.length][a.length];
+};
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+let players = {}; 
+let gameQueue = []; 
+let submittedPlayers = new Set(); 
+let gameState = 'lobby'; 
+let currentRoundIndex = 0;
+let roundTimer = null;
+let roundStartTime = 0; 
+let roundWinners = new Set();
+let isRoundActive = false; 
+
+io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+
+    socket.on('joinGame', (data) => {
+        let nameInput = data.name || "";
+        let colorInput = data.color || "#3498db";
+        const cleanName = nameInput.trim();
+        const isTaken = Object.values(players).some(p => p.name.toLowerCase() === cleanName.toLowerCase());
         
-        document.getElementById('joinBtn').onclick = () => { 
-            const name = document.getElementById('playerName').value; 
-            if(name) { socket.emit('joinGame', { name: name, color: myColor }); } 
+        if (isTaken) {
+            socket.emit('loginError', "Name already taken! Choose another.");
+            return;
+        }
+        
+        players[socket.id] = {
+            id: socket.id,
+            name: cleanName || `Player ${socket.id.substr(0,4)}`,
+            color: colorInput,
+            score: 0,
+            hasSubmitted: false
         };
         
-        document.getElementById('searchBtn').onclick = () => { const query = document.getElementById('searchInput').value; if(query) socket.emit('searchSongs', query); };
-        document.getElementById('submitSongBtn').onclick = () => { if(selectedTrack) { socket.emit('submitSong', selectedTrack); document.getElementById('selectedSong').innerHTML = "<h3>TRACK CONFIRMED</h3>"; document.getElementById('searchResults').classList.add('hidden'); document.getElementById('waitingArea').classList.remove('hidden'); } };
-        document.getElementById('startGameBtn').onclick = () => socket.emit('startGame');
-        document.getElementById('submitGuessBtn').onclick = () => { const guess = document.getElementById('guessInput').value; if(guess) socket.emit('submitGuess', guess); };
-        document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
-        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
-        
-        function updateLobby(data) {
-            const myPlayer = data.players[myId];
-            if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) { showScreen('submissionScreen'); }
-            
-            document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0; 
-            document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; 
-            
-            const list = document.getElementById('playerList'); 
-            list.innerHTML = ''; 
-            
-            const amIHost = (myId === data.hostId);
+        io.emit('playerJoined', {
+            players: players,
+            hostId: Object.keys(players)[0],
+            submittedPlayers: Array.from(submittedPlayers)
+        });
+    });
 
-            Object.values(data.players).forEach(p => { 
-                const li = document.createElement('li'); 
-                
-                let html = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span>`;
-                
-                if (amIHost && p.id !== myId) {
-                    html += `<div style="display:flex; align-items:center; gap:10px;">${p.hasSubmitted ? '✅' : '⏳'}<button class="danger-btn" onclick="kickPlayer('${p.id}')">❌</button></div>`;
-                } else {
-                    html += `${p.hasSubmitted ? '✅' : '⏳'}`;
-                }
-                
-                li.innerHTML = html;
-                list.appendChild(li); 
-            }); 
+    socket.on('kickPlayer', (targetId) => {
+        const hostId = Object.keys(players)[0];
+        if (socket.id !== hostId) return;
+
+        if (players[targetId]) {
+            const targetSocket = io.sockets.sockets.get(targetId);
+            if (targetSocket) targetSocket.disconnect(true);
+            delete players[targetId];
+            submittedPlayers.delete(targetId);
+            io.emit('playerJoined', {
+                players: players,
+                hostId: Object.keys(players)[0],
+                submittedPlayers: Array.from(submittedPlayers)
+            });
         }
+    });
+
+    socket.on('searchSongs', async (query) => {
+        try {
+            const response = await axios.get(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&limit=5`);
+            const results = response.data.results.map(track => ({
+                trackName: track.trackName,
+                artistName: track.artistName,
+                previewUrl: track.previewUrl,
+                albumArt: track.artworkUrl100
+            }));
+            socket.emit('searchResults', results);
+        } catch (error) { console.error(error); }
+    });
+
+    socket.on('submitSong', (song) => {
+        if (!players[socket.id]) return;
+        song.submitterId = socket.id;
+        song.submitterName = players[socket.id].name;
+        gameQueue.push(song);
+        submittedPlayers.add(socket.id);
+        players[socket.id].hasSubmitted = true;
+        const totalPlayers = Object.keys(players).length;
+        const totalSubmitted = submittedPlayers.size;
+        io.emit('songSubmitted', {
+            players: players,
+            submittedPlayers: Array.from(submittedPlayers),
+            isReady: totalSubmitted === totalPlayers && totalPlayers > 0
+        });
+    });
+
+    socket.on('startGame', () => {
+        gameState = 'playing';
+        currentRoundIndex = 0;
+        gameQueue = gameQueue.sort(() => Math.random() - 0.5);
+        io.emit('gameStarted', { trackCount: gameQueue.length });
+        setTimeout(startRound, 3000);
+    });
+
+    socket.on('submitGuess', (guess) => {
+        if (gameState !== 'playing') return;
+
+        const player = players[socket.id];
+        const playerName = player.name;
+        const playerColor = player.color;
         
-        function updateScores(scores, listId) { 
-            const list = document.getElementById(listId); list.innerHTML = ''; const sorted = Object.values(scores).sort((a,b) => b.score - a.score); 
-            sorted.forEach(p => { 
-                const li = document.createElement('li'); 
-                li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span> <span>${p.score} PTS</span>`; 
-                list.appendChild(li); 
-            }); 
+        if (!isRoundActive) {
+            io.emit('chatMessage', { name: playerName, text: guess, type: 'chat', color: playerColor });
+            socket.emit('guessResult', { correct: true, points: 0, silent: true });
+            return;
         }
 
-        window.kickPlayer = function(id) {
-            if(confirm("EJECT PLAYER?")) {
-                socket.emit('kickPlayer', id);
+        const currentTrack = gameQueue[currentRoundIndex];
+        const clean = (str) => (str || "").toLowerCase().replace(/[^\w\s]/gi, '').trim();
+        const userGuess = clean(guess);
+        const title = clean(currentTrack.trackName);
+        const artist = clean(currentTrack.artistName);
+
+        if (roundWinners.has(socket.id)) {
+            if (userGuess.includes(title) || title.includes(userGuess)) {
+                 socket.emit('guessResult', { correct: true, points: 0, message: "Don't spoil it!" });
+            } else {
+                 io.emit('chatMessage', { name: playerName, text: guess, type: 'winner-chat', color: playerColor });
+                 socket.emit('guessResult', { correct: true, points: 0, silent: true });
             }
-        };
-    </script>
-</body>
-</html>
+            return;
+        }
+
+        if (socket.id === currentTrack.submitterId) {
+             if (userGuess.includes(title) || title.includes(userGuess)) {
+                 socket.emit('guessResult', { correct: false, message: "Don't spoil your own song!" });
+             } else {
+                 io.emit('chatMessage', { name: playerName, text: guess, type: 'dj-chat', color: playerColor });
+                 socket.emit('guessResult', { correct: true, points: 0, silent: true });
+             }
+             return;
+        }
+
+        const isTitleMatch = (userGuess.length > 2 && title.includes(userGuess)) || userGuess === title;
+        const isArtistMatch = (userGuess.length > 2 && artist.includes(userGuess)) || userGuess === artist;
+        const titleDist = levenshtein(userGuess, title);
+        const allowedTypos = Math.max(2, Math.floor(title.length * 0.4));
+
+        if (isTitleMatch || isArtistMatch || titleDist <= allowedTypos) {
+            const now = Date.now();
+            const elapsedSeconds = (now - roundStartTime) / 1000;
+            let pointsEarned = Math.max(5, Math.ceil(30 - elapsedSeconds));
+            
+            players[socket.id].score += pointsEarned;
+            if(players[currentTrack.submitterId]) players[currentTrack.submitterId].score += 3;
+
+            roundWinners.add(socket.id);
+            socket.emit('guessResult', { correct: true, points: pointsEarned });
+            io.emit('chatMessage', { name: playerName, text: `Guessed correctly! (+${pointsEarned})`, type: 'correct', color: playerColor });
+
+            const totalPossibleGuessers = Object.keys(players).length - 1;
+            if (roundWinners.size >= totalPossibleGuessers && totalPossibleGuessers > 0) {
+                setTimeout(() => { clearInterval(roundTimer); endRound(); }, 1000);
+            }
+        } else {
+            socket.emit('guessResult', { correct: false });
+            io.emit('chatMessage', { name: playerName, text: guess, type: 'wrong', color: playerColor });
+        }
+    });
+    
+    // --- RESET GAME LOGIC ---
+    socket.on('playAgain', () => {
+        gameQueue = [];
+        submittedPlayers.clear();
+        roundWinners.clear();
+        
+        // Reset scores/status but keep connections
+        Object.values(players).forEach(p => {
+            p.hasSubmitted = false;
+            p.score = 0; 
+        });
+        
+        gameState = 'lobby';
+        isRoundActive = false;
+        
+        io.emit('resetGame', { 
+            players: players,
+            hostId: Object.keys(players)[0]
+        });
+    });
+
+    socket.on('disconnect', () => {
+        delete players[socket.id];
+        submittedPlayers.delete(socket.id);
+        roundWinners.delete(socket.id);
+        const remainingIds = Object.keys(players);
+        if (remainingIds.length > 0) io.emit('playerJoined', { players: players, hostId: remainingIds[0], submittedPlayers: Array.from(submittedPlayers) });
+    });
+});
+
+function startRound() {
+    if (currentRoundIndex >= gameQueue.length) {
+        io.emit('gameFinished', { scores: players });
+        isRoundActive = false;
+        return;
+    }
+    roundWinners.clear();
+    const track = gameQueue[currentRoundIndex];
+    roundStartTime = Date.now();
+    isRoundActive = true; 
+    
+    io.emit('playTrack', {
+        trackIndex: currentRoundIndex,
+        totalTracks: gameQueue.length,
+        roundCountdown: 30,
+        track: { previewUrl: track.previewUrl },
+        submitterName: track.submitterName
+    });
+    
+    let timeLeft = 30;
+    roundTimer = setInterval(() => {
+        timeLeft--;
+        io.emit('countdown', timeLeft);
+        if (timeLeft <= 0) {
+            clearInterval(roundTimer);
+            endRound();
+        }
+    }, 1000);
+}
+
+function endRound() {
+    isRoundActive = false; 
+    const track = gameQueue[currentRoundIndex];
+    io.emit('roundEnded', {
+        track: { title: track.trackName, artist: track.artistName, albumArt: track.albumArt },
+        submitterName: track.submitterName,
+        scores: players
+    });
+    currentRoundIndex++;
+    setTimeout(startRound, 5000);
+}
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
