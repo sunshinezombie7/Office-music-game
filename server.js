@@ -34,7 +34,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 let players = {}; 
 let gameQueue = []; 
 let submittedPlayers = new Set(); 
-let gameState = 'lobby'; 
+// NEW STATES: 'lobby' (waiting) -> 'selection' (picking songs) -> 'playing'
+let gamePhase = 'lobby'; 
 let currentRoundIndex = 0;
 let roundTimer = null;
 let roundStartTime = 0; 
@@ -63,11 +64,22 @@ io.on('connection', (socket) => {
             hasSubmitted: false
         };
         
+        // Send join info AND current phase so they go to the right screen
         io.emit('playerJoined', {
             players: players,
             hostId: Object.keys(players)[0],
-            submittedPlayers: Array.from(submittedPlayers)
+            submittedPlayers: Array.from(submittedPlayers),
+            phase: gamePhase
         });
+    });
+
+    // --- NEW: HOST OPENS SONG SELECTION ---
+    socket.on('openSongSelection', () => {
+        const hostId = Object.keys(players)[0];
+        if (socket.id !== hostId) return;
+
+        gamePhase = 'selection';
+        io.emit('selectionStarted');
     });
 
     socket.on('kickPlayer', (targetId) => {
@@ -82,7 +94,8 @@ io.on('connection', (socket) => {
             io.emit('playerJoined', {
                 players: players,
                 hostId: Object.keys(players)[0],
-                submittedPlayers: Array.from(submittedPlayers)
+                submittedPlayers: Array.from(submittedPlayers),
+                phase: gamePhase
             });
         }
     });
@@ -113,7 +126,6 @@ io.on('connection', (socket) => {
         const totalPlayers = Object.keys(players).length;
         const totalSubmitted = submittedPlayers.size;
         
-        // Broadcast Update with HOST ID to ensure button stability
         io.emit('songSubmitted', {
             players: players,
             hostId: Object.keys(players)[0], 
@@ -123,7 +135,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('startGame', () => {
-        gameState = 'playing';
+        gamePhase = 'playing';
         currentRoundIndex = 0;
         gameQueue = gameQueue.sort(() => Math.random() - 0.5);
         io.emit('gameStarted', { trackCount: gameQueue.length });
@@ -131,7 +143,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('submitGuess', (guess) => {
-        if (gameState !== 'playing') return;
+        if (gamePhase !== 'playing') return;
 
         const player = players[socket.id];
         const playerName = player.name;
@@ -196,15 +208,16 @@ io.on('connection', (socket) => {
         }
     });
     
-    // --- REVERTED PLAY AGAIN LOGIC (Hard Reset) ---
+    // --- RESET LOGIC ---
     socket.on('playAgain', () => {
         gameQueue = [];
         submittedPlayers.clear();
         roundWinners.clear();
-        Object.values(players).forEach(p => p.hasSubmitted = false);
-        gameState = 'lobby';
+        Object.values(players).forEach(p => { p.hasSubmitted = false; p.score = 0; });
+        
+        gamePhase = 'lobby'; // Reset to lobby
         isRoundActive = false;
-        io.emit('playAgainStarted'); // Triggers reload on client
+        io.emit('playAgainStarted');
     });
 
     socket.on('disconnect', () => {
@@ -212,7 +225,12 @@ io.on('connection', (socket) => {
         submittedPlayers.delete(socket.id);
         roundWinners.delete(socket.id);
         const remainingIds = Object.keys(players);
-        if (remainingIds.length > 0) io.emit('playerJoined', { players: players, hostId: remainingIds[0], submittedPlayers: Array.from(submittedPlayers) });
+        if (remainingIds.length > 0) io.emit('playerJoined', { 
+            players: players, 
+            hostId: remainingIds[0], 
+            submittedPlayers: Array.from(submittedPlayers),
+            phase: gamePhase
+        });
     });
 });
 
