@@ -190,13 +190,13 @@ io.on('connection', (socket) => {
         }
     });
     
-    // --- RESET GAME LOGIC ---
+    // --- UPDATED PLAY AGAIN LOGIC ---
     socket.on('playAgain', () => {
         gameQueue = [];
         submittedPlayers.clear();
         roundWinners.clear();
         
-        // Reset scores/status but keep connections
+        // Reset scores/status
         Object.values(players).forEach(p => {
             p.hasSubmitted = false;
             p.score = 0; 
@@ -205,9 +205,11 @@ io.on('connection', (socket) => {
         gameState = 'lobby';
         isRoundActive = false;
         
+        // FIXED: Now we send an empty array for submittedPlayers so client doesn't crash
         io.emit('resetGame', { 
             players: players,
-            hostId: Object.keys(players)[0]
+            hostId: Object.keys(players)[0],
+            submittedPlayers: [] 
         });
     });
 
