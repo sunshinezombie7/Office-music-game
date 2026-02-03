@@ -265,25 +265,21 @@
 
         socket.on('connect', () => { myId = socket.id; });
         
-        // --- JOIN LOGIC & PHASE HANDLING ---
         socket.on('playerJoined', (data) => {
             updateLobby(data);
             
-            // Check Phase to show correct screen
             if (document.getElementById('loginScreen').classList.contains('hidden') === false) {
-                // If I'm sitting on login screen, and I've joined:
                 if (data.players[myId]) {
                     if (data.phase === 'lobby') {
                         showScreen('lobbyScreen');
                     } else if (data.phase === 'selection') {
                         showScreen('submissionScreen');
                     } else if (data.phase === 'playing') {
-                        showScreen('gameScreen'); // Late joiner
+                        showScreen('gameScreen'); 
                     }
                 }
             }
 
-            // Show Host Buttons if Host
             if(data.hostId === myId) {
                 document.getElementById('openSelectionBtn').classList.remove('hidden');
                 document.getElementById('hostControls').classList.remove('hidden');
@@ -291,7 +287,6 @@
         });
 
         socket.on('selectionStarted', () => {
-             // Move everyone from Lobby to Selection
              showScreen('submissionScreen');
         });
 
@@ -317,7 +312,7 @@
         });
 
         socket.on('songSubmitted', (data) => {
-            updateLobby(data); // Refresh list
+            updateLobby(data); 
             if(data.isReady) document.getElementById('startGameBtn').disabled = false;
         });
         
@@ -454,7 +449,6 @@
             if(name) { socket.emit('joinGame', { name: name, color: myColor }); } 
         };
         
-        // NEW HOST BUTTON TRIGGER
         document.getElementById('openSelectionBtn').onclick = () => {
             socket.emit('openSongSelection');
         };
@@ -466,15 +460,14 @@
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
         
+        // --- UPDATED LOBBY + CROWN ICON ---
         function updateLobby(data) {
-            // Count
             const count = data.submittedPlayers ? data.submittedPlayers.length : 0;
             document.getElementById('submittedCount').textContent = count; 
             const total = Object.keys(data.players).length;
             document.getElementById('totalPlayers').textContent = total; 
             document.getElementById('lobbyCount').textContent = total;
 
-            // Update Both Lists (Lobby & Submission)
             const lobbyList = document.getElementById('lobbyList'); 
             const submissionList = document.getElementById('submissionList');
             lobbyList.innerHTML = ''; 
@@ -485,7 +478,11 @@
             Object.values(data.players).forEach(p => { 
                 const li = document.createElement('li'); 
                 
-                let html = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span>`;
+                // ADDED CROWN ICON LOGIC HERE
+                const isThisPlayerHost = (p.id === data.hostId);
+                const crown = isThisPlayerHost ? ' 👑' : '';
+
+                let html = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}${crown}</span>`;
                 
                 if (amIHost && p.id !== myId) {
                     html += `<div style="display:flex; align-items:center; gap:10px;">${p.hasSubmitted ? '✅' : '⏳'}<button class="danger-btn" onclick="kickPlayer('${p.id}')">❌</button></div>`;
@@ -494,10 +491,8 @@
                 }
                 
                 li.innerHTML = html;
-                
-                // Clone for both lists
-                lobbyList.appendChild(li.cloneNode(true)); // Add to Lobby Screen
-                submissionList.appendChild(li);            // Add to Submission Screen
+                lobbyList.appendChild(li.cloneNode(true)); 
+                submissionList.appendChild(li);            
             }); 
         }
         
