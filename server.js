@@ -102,15 +102,24 @@ io.on('connection', (socket) => {
 
     socket.on('submitSong', (song) => {
         if (!players[socket.id]) return;
+        
+        // 1. Tag the song
         song.submitterId = socket.id;
         song.submitterName = players[socket.id].name;
         gameQueue.push(song);
+        
+        // 2. Mark player as submitted
         submittedPlayers.add(socket.id);
         players[socket.id].hasSubmitted = true;
+        
+        // 3. Check if ready
         const totalPlayers = Object.keys(players).length;
         const totalSubmitted = submittedPlayers.size;
+        
+        // 4. Broadcast Update (FIXED: NOW INCLUDES HOST ID)
         io.emit('songSubmitted', {
             players: players,
+            hostId: Object.keys(players)[0], // This was missing before!
             submittedPlayers: Array.from(submittedPlayers),
             isReady: totalSubmitted === totalPlayers && totalPlayers > 0
         });
@@ -190,13 +199,11 @@ io.on('connection', (socket) => {
         }
     });
     
-    // --- UPDATED PLAY AGAIN LOGIC ---
     socket.on('playAgain', () => {
         gameQueue = [];
         submittedPlayers.clear();
         roundWinners.clear();
         
-        // Reset scores/status
         Object.values(players).forEach(p => {
             p.hasSubmitted = false;
             p.score = 0; 
@@ -205,7 +212,6 @@ io.on('connection', (socket) => {
         gameState = 'lobby';
         isRoundActive = false;
         
-        // FIXED: Now we send an empty array for submittedPlayers so client doesn't crash
         io.emit('resetGame', { 
             players: players,
             hostId: Object.keys(players)[0],
