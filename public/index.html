@@ -431,11 +431,15 @@
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
         
+        // --- FIXED LOBBY COUNTER: Using .length instead of .size ---
         function updateLobby(data) {
             const myPlayer = data.players[myId];
             if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) { showScreen('submissionScreen'); }
             
-            document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.size : 0; 
+            // FIXED: Arrays have .length, not .size!
+            const count = data.submittedPlayers ? data.submittedPlayers.length : 0;
+            document.getElementById('submittedCount').textContent = count; 
+            
             document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; 
             
             const list = document.getElementById('playerList'); 
