@@ -431,12 +431,11 @@
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
         
-        // --- FIXED LOBBY COUNTER: Using .length instead of .size ---
         function updateLobby(data) {
             const myPlayer = data.players[myId];
             if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) { showScreen('submissionScreen'); }
             
-            // FIXED: Arrays have .length, not .size!
+            // FIXED: Use .length for Arrays
             const count = data.submittedPlayers ? data.submittedPlayers.length : 0;
             document.getElementById('submittedCount').textContent = count; 
             
