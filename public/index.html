@@ -400,16 +400,8 @@
             }); }
         });
         
-        socket.on('resetGame', (data) => {
-            selectedTrack = null;
-            document.getElementById('searchInput').value = '';
-            document.getElementById('searchResults').classList.add('hidden');
-            document.getElementById('selectedSong').classList.add('hidden');
-            document.getElementById('waitingArea').classList.add('hidden');
-            document.getElementById('startGameBtn').disabled = true;
-            showScreen('submissionScreen');
-            updateLobby(data);
-        });
+        // --- REVERTED: Hard Reload Listener ---
+        socket.on('playAgainStarted', () => location.reload());
 
         function addEnterKey(inputId, btnId) {
             const input = document.getElementById(inputId);
@@ -435,8 +427,11 @@
             const myPlayer = data.players[myId];
             if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) { showScreen('submissionScreen'); }
             
-            // FIXED: Use .length for Arrays
-            const count = data.submittedPlayers ? data.submittedPlayers.length : 0;
+            // Handles both Array (revert) and Set (initial load) just in case
+            let count = 0;
+            if(data.submittedPlayers) {
+                count = data.submittedPlayers.length !== undefined ? data.submittedPlayers.length : data.submittedPlayers.size;
+            }
             document.getElementById('submittedCount').textContent = count; 
             
             document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; 
