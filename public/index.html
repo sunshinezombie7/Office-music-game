@@ -75,7 +75,8 @@
         .song-item:hover { background: #222; border-color: #00ffff; }
         .song-item.selected { border-left: 8px solid #ff00ff; background: #220022; }
 
-        #playerList li, #scoreList li, #runnerUpList li { 
+        /* Shared List Styles */
+        ul.retro-list li { 
             background: #000; 
             border-bottom: 1px solid #333;
             padding: 10px; 
@@ -154,8 +155,17 @@
             <p style="margin: 15px 0 5px; font-size: 0.8rem; color: #00ffff;">SELECT COLOR:</p>
             <div class="color-options" id="colorPicker"></div>
             <br>
-            <button id="joinBtn">START GAME</button>
+            <button id="joinBtn">JOIN LOBBY</button>
             <div id="loginStatus" class="status-message"></div>
+        </div>
+
+        <div class="screen hidden" id="lobbyScreen">
+            <h2>LOBBY - WAITING FOR PLAYERS</h2>
+            <p style="color:#ffff00; font-size:0.9rem; margin-bottom:10px;">WAITING FOR HOST TO START SELECTION...</p>
+            <p>PLAYERS: <span id="lobbyCount">0</span></p>
+            <ul id="lobbyList" class="retro-list"></ul>
+            <br>
+            <button id="openSelectionBtn" class="host-btn hidden">OPEN SONG SELECTION</button>
         </div>
 
         <div class="screen hidden" id="submissionScreen">
@@ -175,7 +185,7 @@
             <div id="waitingArea" class="hidden" style="margin-top:20px; border-top:1px solid #444; padding-top:10px;">
                 <h3>WAITING FOR PLAYERS...</h3>
                 <p>READY: <span id="submittedCount">0</span>/<span id="totalPlayers">0</span></p>
-                <ul id="playerList"></ul>
+                <ul id="submissionList" class="retro-list"></ul>
             </div>
             <div class="host-controls hidden" id="hostControls">
                 <button id="startGameBtn" class="host-btn" disabled>INITIATE GAME</button>
@@ -199,7 +209,7 @@
             
             <div id="scoreboard" style="margin-top: 30px; text-align: left;">
                 <h3 style="border-bottom: 2px solid #fff; padding-bottom: 5px;">HIGH SCORES</h3>
-                <ul id="scoreList"></ul>
+                <ul id="scoreList" class="retro-list"></ul>
             </div>
         </div>
 
@@ -208,7 +218,7 @@
             <div id="podium" class="podium-container"></div>
             <div id="runnerUps" style="text-align: left; margin-top: 30px;">
                 <h3>RANKINGS</h3>
-                <ul id="runnerUpList"></ul>
+                <ul id="runnerUpList" class="retro-list"></ul>
             </div>
             <button id="playAgainBtn" class="host-btn" style="margin-top: 20px;">CONTINUE?</button>
         </div>
@@ -254,11 +264,39 @@
         }
 
         socket.on('connect', () => { myId = socket.id; });
+        
+        // --- JOIN LOGIC & PHASE HANDLING ---
         socket.on('playerJoined', (data) => {
             updateLobby(data);
-            if(data.hostId === myId) document.getElementById('hostControls').classList.remove('hidden');
+            
+            // Check Phase to show correct screen
+            if (document.getElementById('loginScreen').classList.contains('hidden') === false) {
+                // If I'm sitting on login screen, and I've joined:
+                if (data.players[myId]) {
+                    if (data.phase === 'lobby') {
+                        showScreen('lobbyScreen');
+                    } else if (data.phase === 'selection') {
+                        showScreen('submissionScreen');
+                    } else if (data.phase === 'playing') {
+                        showScreen('gameScreen'); // Late joiner
+                    }
+                }
+            }
+
+            // Show Host Buttons if Host
+            if(data.hostId === myId) {
+                document.getElementById('openSelectionBtn').classList.remove('hidden');
+                document.getElementById('hostControls').classList.remove('hidden');
+            }
         });
+
+        socket.on('selectionStarted', () => {
+             // Move everyone from Lobby to Selection
+             showScreen('submissionScreen');
+        });
+
         socket.on('loginError', (msg) => { const el = document.getElementById('loginStatus'); el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000); });
+        
         socket.on('searchResults', (results) => {
             const container = document.getElementById('searchResults');
             container.innerHTML = '';
@@ -277,8 +315,9 @@
                 container.appendChild(div);
             });
         });
+
         socket.on('songSubmitted', (data) => {
-            updateLobby(data);
+            updateLobby(data); // Refresh list
             if(data.isReady) document.getElementById('startGameBtn').disabled = false;
         });
         
@@ -400,7 +439,6 @@
             }); }
         });
         
-        // --- REVERTED: Hard Reload Listener ---
         socket.on('playAgainStarted', () => location.reload());
 
         function addEnterKey(inputId, btnId) {
@@ -416,6 +454,11 @@
             if(name) { socket.emit('joinGame', { name: name, color: myColor }); } 
         };
         
+        // NEW HOST BUTTON TRIGGER
+        document.getElementById('openSelectionBtn').onclick = () => {
+            socket.emit('openSongSelection');
+        };
+
         document.getElementById('searchBtn').onclick = () => { const query = document.getElementById('searchInput').value; if(query) socket.emit('searchSongs', query); };
         document.getElementById('submitSongBtn').onclick = () => { if(selectedTrack) { socket.emit('submitSong', selectedTrack); document.getElementById('selectedSong').innerHTML = "<h3>TRACK CONFIRMED</h3>"; document.getElementById('searchResults').classList.add('hidden'); document.getElementById('waitingArea').classList.remove('hidden'); } };
         document.getElementById('startGameBtn').onclick = () => socket.emit('startGame');
@@ -424,20 +467,18 @@
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
         
         function updateLobby(data) {
-            const myPlayer = data.players[myId];
-            if(myPlayer && document.getElementById('loginScreen').classList.contains('hidden') === false) { showScreen('submissionScreen'); }
-            
-            // Handles both Array (revert) and Set (initial load) just in case
-            let count = 0;
-            if(data.submittedPlayers) {
-                count = data.submittedPlayers.length !== undefined ? data.submittedPlayers.length : data.submittedPlayers.size;
-            }
+            // Count
+            const count = data.submittedPlayers ? data.submittedPlayers.length : 0;
             document.getElementById('submittedCount').textContent = count; 
-            
-            document.getElementById('totalPlayers').textContent = Object.keys(data.players).length; 
-            
-            const list = document.getElementById('playerList'); 
-            list.innerHTML = ''; 
+            const total = Object.keys(data.players).length;
+            document.getElementById('totalPlayers').textContent = total; 
+            document.getElementById('lobbyCount').textContent = total;
+
+            // Update Both Lists (Lobby & Submission)
+            const lobbyList = document.getElementById('lobbyList'); 
+            const submissionList = document.getElementById('submissionList');
+            lobbyList.innerHTML = ''; 
+            submissionList.innerHTML = '';
             
             const amIHost = (myId === data.hostId);
 
@@ -453,7 +494,10 @@
                 }
                 
                 li.innerHTML = html;
-                list.appendChild(li); 
+                
+                // Clone for both lists
+                lobbyList.appendChild(li.cloneNode(true)); // Add to Lobby Screen
+                submissionList.appendChild(li);            // Add to Submission Screen
             }); 
         }
         
