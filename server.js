@@ -156,6 +156,7 @@ io.on('connection', (socket) => {
         const title = clean(currentTrack.trackName);
         const artist = clean(currentTrack.artistName);
 
+        // 1. Check if they already won
         if (roundWinners.has(socket.id)) {
             if (userGuess.includes(title) || title.includes(userGuess)) {
                  socket.emit('guessResult', { correct: true, points: 0, message: "Don't spoil it!" });
@@ -166,6 +167,7 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // 2. Check if it's the submitter (DJ)
         if (socket.id === currentTrack.submitterId) {
              if (userGuess.includes(title) || title.includes(userGuess)) {
                  socket.emit('guessResult', { correct: false, message: "Don't spoil your own song!" });
@@ -176,12 +178,24 @@ io.on('connection', (socket) => {
              return;
         }
 
-        const isTitleMatch = (userGuess.length > 2 && title.includes(userGuess)) || userGuess === title;
+        // 3. ARTIST CHECK (Feedback only, no points)
         const isArtistMatch = (userGuess.length > 2 && artist.includes(userGuess)) || userGuess === artist;
-        const titleDist = levenshtein(userGuess, title);
-        const allowedTypos = Math.max(2, Math.floor(title.length * 0.4));
+        if (isArtistMatch) {
+            socket.emit('guessResult', { correct: false, message: "That's the artist! Guess the title!" });
+            io.emit('chatMessage', { name: playerName, text: guess, type: 'wrong', color: playerColor });
+            return; 
+        }
 
-        if (isTitleMatch || isArtistMatch || titleDist <= allowedTypos) {
+        // 4. TITLE CHECK (Win Condition)
+        // Rule: Must be a match AND contain at least 50% of the characters
+        const isSignificantPart = (userGuess.length >= title.length * 0.5) && title.includes(userGuess);
+        const isExactMatch = userGuess === title;
+        
+        // Fuzzy Match
+        const titleDist = levenshtein(userGuess, title);
+        const allowedTypos = Math.max(2, Math.floor(title.length * 0.4)); 
+
+        if (isSignificantPart || isExactMatch || titleDist <= allowedTypos) {
             const now = Date.now();
             const elapsedSeconds = (now - roundStartTime) / 1000;
             let pointsEarned = Math.max(5, Math.ceil(30 - elapsedSeconds));
@@ -266,9 +280,9 @@ function startRound() {
         timeLeft--;
         io.emit('countdown', timeLeft);
         
-        // --- NEW HINT LOGIC ---
-        // 1. First 10 seconds: Show NOTHING.
-        // 2. Last 20 seconds (20, 15, 10, 5): Reveal 1 letter every 5 seconds.
+        // --- HINT LOGIC ---
+        // First 10s: Nothing.
+        // Last 20s: Reveal every 5s.
         if (timeLeft <= 20 && timeLeft % 5 === 0 && currentHiddenIndices.length > 0) {
             const indexToReveal = currentHiddenIndices.pop(); 
             const charToReveal = currentDisplayTitle[indexToReveal];
