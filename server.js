@@ -34,13 +34,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 let players = {}; 
 let gameQueue = []; 
 let submittedPlayers = new Set(); 
-// NEW STATES: 'lobby' (waiting) -> 'selection' (picking songs) -> 'playing'
 let gamePhase = 'lobby'; 
 let currentRoundIndex = 0;
 let roundTimer = null;
 let roundStartTime = 0; 
 let roundWinners = new Set();
 let isRoundActive = false; 
+
+// --- HINT SYSTEM VARIABLES ---
+let currentDisplayTitle = ""; // The actual title uppercased
+let currentHiddenIndices = []; // Indices of letters we haven't shown yet
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -64,7 +67,6 @@ io.on('connection', (socket) => {
             hasSubmitted: false
         };
         
-        // Send join info AND current phase so they go to the right screen
         io.emit('playerJoined', {
             players: players,
             hostId: Object.keys(players)[0],
@@ -73,11 +75,9 @@ io.on('connection', (socket) => {
         });
     });
 
-    // --- NEW: HOST OPENS SONG SELECTION ---
     socket.on('openSongSelection', () => {
         const hostId = Object.keys(players)[0];
         if (socket.id !== hostId) return;
-
         gamePhase = 'selection';
         io.emit('selectionStarted');
     });
@@ -85,7 +85,6 @@ io.on('connection', (socket) => {
     socket.on('kickPlayer', (targetId) => {
         const hostId = Object.keys(players)[0];
         if (socket.id !== hostId) return;
-
         if (players[targetId]) {
             const targetSocket = io.sockets.sockets.get(targetId);
             if (targetSocket) targetSocket.disconnect(true);
@@ -115,17 +114,13 @@ io.on('connection', (socket) => {
 
     socket.on('submitSong', (song) => {
         if (!players[socket.id]) return;
-        
         song.submitterId = socket.id;
         song.submitterName = players[socket.id].name;
         gameQueue.push(song);
-        
         submittedPlayers.add(socket.id);
         players[socket.id].hasSubmitted = true;
-        
         const totalPlayers = Object.keys(players).length;
         const totalSubmitted = submittedPlayers.size;
-        
         io.emit('songSubmitted', {
             players: players,
             hostId: Object.keys(players)[0], 
@@ -208,14 +203,12 @@ io.on('connection', (socket) => {
         }
     });
     
-    // --- RESET LOGIC ---
     socket.on('playAgain', () => {
         gameQueue = [];
         submittedPlayers.clear();
         roundWinners.clear();
         Object.values(players).forEach(p => { p.hasSubmitted = false; p.score = 0; });
-        
-        gamePhase = 'lobby'; // Reset to lobby
+        gamePhase = 'lobby'; 
         isRoundActive = false;
         io.emit('playAgainStarted');
     });
@@ -245,18 +238,44 @@ function startRound() {
     roundStartTime = Date.now();
     isRoundActive = true; 
     
+    // --- PREPARE HINT MASK ---
+    currentDisplayTitle = track.trackName.toUpperCase();
+    currentHiddenIndices = [];
+    
+    // Create initial mask: Only hide letters/numbers. Keep spaces & punctuation.
+    const initialMask = currentDisplayTitle.split('').map((char, index) => {
+        if (/[A-Z0-9]/.test(char)) {
+            currentHiddenIndices.push(index); // This index needs revealing later
+            return '_';
+        }
+        return char;
+    }).join('');
+    
+    // Shuffle the indices so we reveal randomly
+    currentHiddenIndices = currentHiddenIndices.sort(() => Math.random() - 0.5);
+
     io.emit('playTrack', {
         trackIndex: currentRoundIndex,
         totalTracks: gameQueue.length,
         roundCountdown: 30,
         track: { previewUrl: track.previewUrl },
-        submitterName: track.submitterName
+        submitterName: track.submitterName,
+        hintMask: initialMask // Send the blank version
     });
     
     let timeLeft = 30;
     roundTimer = setInterval(() => {
         timeLeft--;
         io.emit('countdown', timeLeft);
+        
+        // --- REVEAL LETTER LOGIC ---
+        // Reveal a letter every 3 seconds IF there are hidden letters left
+        if (timeLeft % 3 === 0 && currentHiddenIndices.length > 0) {
+            const indexToReveal = currentHiddenIndices.pop(); // Take one
+            const charToReveal = currentDisplayTitle[indexToReveal];
+            io.emit('revealHint', { index: indexToReveal, char: charToReveal });
+        }
+
         if (timeLeft <= 0) {
             clearInterval(roundTimer);
             endRound();
