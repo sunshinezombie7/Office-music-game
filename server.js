@@ -42,8 +42,8 @@ let roundWinners = new Set();
 let isRoundActive = false; 
 
 // --- HINT SYSTEM VARIABLES ---
-let currentDisplayTitle = ""; // The actual title uppercased
-let currentHiddenIndices = []; // Indices of letters we haven't shown yet
+let currentDisplayTitle = ""; 
+let currentHiddenIndices = []; 
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -242,16 +242,14 @@ function startRound() {
     currentDisplayTitle = track.trackName.toUpperCase();
     currentHiddenIndices = [];
     
-    // Create initial mask: Only hide letters/numbers. Keep spaces & punctuation.
     const initialMask = currentDisplayTitle.split('').map((char, index) => {
         if (/[A-Z0-9]/.test(char)) {
-            currentHiddenIndices.push(index); // This index needs revealing later
+            currentHiddenIndices.push(index);
             return '_';
         }
         return char;
     }).join('');
     
-    // Shuffle the indices so we reveal randomly
     currentHiddenIndices = currentHiddenIndices.sort(() => Math.random() - 0.5);
 
     io.emit('playTrack', {
@@ -260,7 +258,7 @@ function startRound() {
         roundCountdown: 30,
         track: { previewUrl: track.previewUrl },
         submitterName: track.submitterName,
-        hintMask: initialMask // Send the blank version
+        hintMask: initialMask
     });
     
     let timeLeft = 30;
@@ -268,10 +266,11 @@ function startRound() {
         timeLeft--;
         io.emit('countdown', timeLeft);
         
-        // --- REVEAL LETTER LOGIC ---
-        // Reveal a letter every 3 seconds IF there are hidden letters left
-        if (timeLeft % 3 === 0 && currentHiddenIndices.length > 0) {
-            const indexToReveal = currentHiddenIndices.pop(); // Take one
+        // --- NEW HINT LOGIC ---
+        // 1. First 10 seconds: Show NOTHING.
+        // 2. Last 20 seconds (20, 15, 10, 5): Reveal 1 letter every 5 seconds.
+        if (timeLeft <= 20 && timeLeft % 5 === 0 && currentHiddenIndices.length > 0) {
+            const indexToReveal = currentHiddenIndices.pop(); 
             const charToReveal = currentDisplayTitle[indexToReveal];
             io.emit('revealHint', { index: indexToReveal, char: charToReveal });
         }
