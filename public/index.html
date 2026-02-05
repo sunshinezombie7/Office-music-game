@@ -7,15 +7,87 @@
     <style>
         /* --- RETRO SYNTHWAVE THEME --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body { 
             font-family: 'Courier New', Courier, monospace; 
             background: #120428; 
             color: #fff; 
-            padding: 20px; 
             text-align: center; 
-            padding-bottom: 200px; 
+            /* Remove default padding to allow full-screen layout */
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden; /* Prevent body scroll, handle inside columns */
         } 
-        .container { max-width: 800px; margin: 0 auto; }
+
+        /* --- NEW LAYOUT SYSTEM (DASHBOARD) --- */
+        #main-layout {
+            display: flex;
+            flex-direction: column; /* Default to mobile (stack) */
+            height: 100%;
+            width: 100%;
+        }
+
+        /* GAME AREA (Left on Desktop, Top on Mobile) */
+        #game-column {
+            flex: 1;
+            overflow-y: auto; /* Allow scrolling within game area */
+            padding: 20px;
+            padding-bottom: 160px; /* Space for mobile chat bar */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container { max-width: 800px; width: 100%; }
+
+        /* CHAT AREA (Right on Desktop, Bottom on Mobile) */
+        #chat-column {
+            background: #000;
+            border-top: 4px solid #ff00ff;
+            padding: 10px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            
+            /* Mobile Default: Fixed at bottom */
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%;
+            height: 150px; 
+        }
+
+        /* --- DESKTOP LAYOUT (Laptops/PCs > 900px) --- */
+        @media (min-width: 900px) {
+            #main-layout {
+                flex-direction: row; /* Switch to Side-by-Side */
+            }
+
+            #game-column {
+                flex: 3; /* Takes up 75% of width */
+                padding-bottom: 20px; /* Remove mobile padding */
+                border-right: 4px solid #00ffff; /* Retro Divider */
+            }
+
+            #chat-column {
+                flex: 1; /* Takes up 25% of width */
+                position: static; /* No longer fixed */
+                height: 100%; /* Full height */
+                border-top: none; /* Remove mobile border */
+                border-left: 4px solid #ff00ff; /* Add side border */
+                min-width: 300px; /* Prevent chat from getting too skinny */
+            }
+
+            /* Make chat box fill the vertical space */
+            #chatBox {
+                flex-grow: 1; 
+                height: auto !important; 
+                max-height: none !important;
+            }
+        }
+
+        /* --- TYPOGRAPHY & COMPONENTS --- */
         
         h1 { 
             color: #ffffff;
@@ -36,13 +108,14 @@
             margin: 20px 0; 
             border: 2px solid #00ffff; 
             box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+            width: 100%;
         }
         
         .hidden { display: none !important; }
 
         input[type="text"] { 
             padding: 15px; 
-            width: 70%; 
+            width: 100%; /* Full width of container */
             border: 2px solid #ff00ff; 
             background: #220022; 
             color: #00ffff; 
@@ -75,7 +148,6 @@
         .song-item:hover { background: #222; border-color: #00ffff; }
         .song-item.selected { border-left: 8px solid #ff00ff; background: #220022; }
 
-        /* Shared List Styles */
         ul.retro-list li { 
             background: #000; 
             border-bottom: 1px solid #333;
@@ -91,27 +163,35 @@
 
         #countdown { font-size: 3rem; font-weight: bold; color: #ff00ff; margin: 10px 0; text-shadow: 2px 2px #000; }
         
-        .guess-correct { color: #00ff00; font-weight: bold; margin: 10px; font-size: 1.2rem; text-transform: uppercase; }
-        .guess-incorrect { color: #ff3333; font-weight: bold; margin: 10px; text-transform: uppercase; }
-        
-        #bottomPanel { 
-            position: fixed; bottom: 0; left: 0; width: 100%; 
-            background: #000; 
-            border-top: 4px solid #ff00ff; 
-            padding: 10px; z-index: 100; 
-            display: flex; flex-direction: column; align-items: center; 
+        /* HINT TEXT STYLE */
+        #hintText {
+            font-family: 'Courier New', monospace;
+            font-size: 2.5rem; /* Larger for readability */
+            letter-spacing: 8px;
+            color: #00ffff;
+            margin: 20px 0;
+            text-shadow: 2px 2px #000;
+            word-break: break-word;
+            line-height: 1.2;
         }
+
+        .guess-correct { color: #00ff00; font-weight: bold; margin: 5px 0; font-size: 1.1rem; text-transform: uppercase; }
+        .guess-incorrect { color: #ff3333; font-weight: bold; margin: 5px 0; text-transform: uppercase; }
+        
+        /* CHAT BOX STYLING */
         #chatBox { 
-            width: 90%; max-width: 800px; height: 120px; 
-            overflow-y: auto; background: #111; 
+            width: 100%; 
+            height: 100px; /* Mobile height */
+            overflow-y: auto; 
+            background: #111; 
             border: 1px solid #333; 
             padding: 10px; margin-bottom: 10px; text-align: left; 
             font-size: 0.9rem;
         }
-        #inputRow { width: 100%; max-width: 800px; display: flex; gap: 10px; }
+        #inputRow { width: 100%; display: flex; gap: 10px; }
         #inputRow input { flex: 1; }
         
-        .chat-msg { margin: 2px 0; }
+        .chat-msg { margin: 4px 0; word-wrap: break-word;}
         .chat-name { font-weight: bold; text-transform: uppercase; }
         .chat-correct { color: #00ff00; }
         .chat-winner { color: #ffff00; }
@@ -146,94 +226,101 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>NOT SONGLIO</h1>
+    <div id="main-layout">
         
-        <div class="screen" id="loginScreen">
-            <h2>CHOOSE YOUR CHARACTER</h2>
-            <input type="text" id="playerName" placeholder="ENTER NAME..." maxlength="15">
-            <p style="margin: 15px 0 5px; font-size: 0.8rem; color: #00ffff;">SELECT COLOR:</p>
-            <div class="color-options" id="colorPicker"></div>
-            <br>
-            <button id="joinBtn">JOIN LOBBY</button>
-            <div id="loginStatus" class="status-message"></div>
+        <div id="game-column">
+            <div class="container">
+                <h1>NOT SONGLIO</h1>
+                
+                <div class="screen" id="loginScreen">
+                    <h2>CHOOSE YOUR CHARACTER</h2>
+                    <input type="text" id="playerName" placeholder="ENTER NAME..." maxlength="15">
+                    <p style="margin: 15px 0 5px; font-size: 0.8rem; color: #00ffff;">SELECT COLOR:</p>
+                    <div class="color-options" id="colorPicker"></div>
+                    <br>
+                    <button id="joinBtn">JOIN LOBBY</button>
+                    <div id="loginStatus" class="status-message"></div>
+                </div>
+
+                <div class="screen hidden" id="lobbyScreen">
+                    <h2>LOBBY - WAITING FOR PLAYERS</h2>
+                    <p style="color:#ffff00; font-size:0.9rem; margin-bottom:10px;">WAITING FOR HOST TO START SELECTION...</p>
+                    <p>PLAYERS: <span id="lobbyCount">0</span></p>
+                    <ul id="lobbyList" class="retro-list"></ul>
+                    <br>
+                    <button id="openSelectionBtn" class="host-btn hidden">OPEN SONG SELECTION</button>
+                </div>
+
+                <div class="screen hidden" id="submissionScreen">
+                    <h2>SELECT TRACK</h2>
+                    <div style="margin-bottom: 15px;">
+                        <input type="text" id="searchInput" placeholder="ARTIST OR TITLE...">
+                        <button id="searchBtn">SEARCH</button>
+                    </div>
+                    <div id="searchResults" class="hidden"></div>
+                    <div id="selectedSong" class="hidden">
+                        <h3 id="selTitle" style="color:#ffff00"></h3>
+                        <p id="selArtist"></p>
+                        <audio id="previewAudio" controls style="width: 100%; margin: 10px 0;"></audio>
+                        <br>
+                        <button id="submitSongBtn" class="host-btn">CONFIRM SELECTION</button>
+                    </div>
+                    <div id="waitingArea" class="hidden" style="margin-top:20px; border-top:1px solid #444; padding-top:10px;">
+                        <h3>WAITING FOR PLAYERS...</h3>
+                        <p>READY: <span id="submittedCount">0</span>/<span id="totalPlayers">0</span></p>
+                        <ul id="submissionList" class="retro-list"></ul>
+                    </div>
+                    <div class="host-controls hidden" id="hostControls">
+                        <button id="startGameBtn" class="host-btn" disabled>INITIATE GAME</button>
+                    </div>
+                </div>
+                
+                <div class="screen hidden" id="gameScreen">
+                    <h2>GUESS THE TRACK</h2>
+                    <div class="progress-container"><div class="progress-bar" id="gameProgress"></div></div>
+                    <p>TRACK <span id="trackNum">1</span></p>
+                    <p id="activeSubmitter">DJ: ???</p>
+                    
+                    <div id="hintText"></div>
+                    
+                    <div id="countdown">30</div>
+                    <audio id="gameAudio" style="display:none"></audio>
+                    
+                    <div id="revealArea" class="hidden">
+                        <img id="albumArt" src="" style="width:150px; border: 2px solid #fff;">
+                        <h3 id="revealTitle" style="color:#ffff00; margin-top:10px; font-size: 1.5rem;">TITLE</h3>
+                        <p id="revealArtist" style="color:#00ffff; font-size: 1.2rem;">ARTIST</p>
+                        <p id="revealSubmitter" style="color:#ff00ff; font-style:italic;">CHOSEN BY: ???</p>
+                    </div>
+                    
+                    <div id="scoreboard" style="margin-top: 30px; text-align: left;">
+                        <h3 style="border-bottom: 2px solid #fff; padding-bottom: 5px;">HIGH SCORES</h3>
+                        <ul id="scoreList" class="retro-list"></ul>
+                    </div>
+                </div>
+
+                <div class="screen hidden" id="resultsScreen">
+                    <h2>🏆 GAME OVER 🏆</h2>
+                    <div id="podium" class="podium-container"></div>
+                    <div id="runnerUps" style="text-align: left; margin-top: 30px;">
+                        <h3>RANKINGS</h3>
+                        <ul id="runnerUpList" class="retro-list"></ul>
+                    </div>
+                    <button id="playAgainBtn" class="host-btn" style="margin-top: 20px;">CONTINUE?</button>
+                </div>
+            </div>
         </div>
 
-        <div class="screen hidden" id="lobbyScreen">
-            <h2>LOBBY - WAITING FOR PLAYERS</h2>
-            <p style="color:#ffff00; font-size:0.9rem; margin-bottom:10px;">WAITING FOR HOST TO START SELECTION...</p>
-            <p>PLAYERS: <span id="lobbyCount">0</span></p>
-            <ul id="lobbyList" class="retro-list"></ul>
-            <br>
-            <button id="openSelectionBtn" class="host-btn hidden">OPEN SONG SELECTION</button>
-        </div>
-
-        <div class="screen hidden" id="submissionScreen">
-            <h2>SELECT TRACK</h2>
-            <div style="margin-bottom: 15px;">
-                <input type="text" id="searchInput" placeholder="ARTIST OR TITLE...">
-                <button id="searchBtn">SEARCH</button>
-            </div>
-            <div id="searchResults" class="hidden"></div>
-            <div id="selectedSong" class="hidden">
-                <h3 id="selTitle" style="color:#ffff00"></h3>
-                <p id="selArtist"></p>
-                <audio id="previewAudio" controls style="width: 100%; margin: 10px 0;"></audio>
-                <br>
-                <button id="submitSongBtn" class="host-btn">CONFIRM SELECTION</button>
-            </div>
-            <div id="waitingArea" class="hidden" style="margin-top:20px; border-top:1px solid #444; padding-top:10px;">
-                <h3>WAITING FOR PLAYERS...</h3>
-                <p>READY: <span id="submittedCount">0</span>/<span id="totalPlayers">0</span></p>
-                <ul id="submissionList" class="retro-list"></ul>
-            </div>
-            <div class="host-controls hidden" id="hostControls">
-                <button id="startGameBtn" class="host-btn" disabled>INITIATE GAME</button>
-            </div>
-        </div>
-        
-        <div class="screen hidden" id="gameScreen">
-            <h2>GUESS THE TRACK</h2>
-            <div class="progress-container"><div class="progress-bar" id="gameProgress"></div></div>
-            <p>TRACK <span id="trackNum">1</span></p>
-            <p id="activeSubmitter">DJ: ???</p>
-            <div id="countdown">30</div>
-            <audio id="gameAudio" style="display:none"></audio>
-            
-            <div id="revealArea" class="hidden">
-                <img id="albumArt" src="" style="width:150px; border: 2px solid #fff;">
-                <h3 id="revealTitle" style="color:#ffff00; margin-top:10px;">TITLE</h3>
-                <p id="revealArtist" style="color:#00ffff">ARTIST</p>
-                <p id="revealSubmitter" style="color:#ff00ff; font-style:italic;">CHOSEN BY: ???</p>
-            </div>
-            
-            <div id="scoreboard" style="margin-top: 30px; text-align: left;">
-                <h3 style="border-bottom: 2px solid #fff; padding-bottom: 5px;">HIGH SCORES</h3>
-                <ul id="scoreList" class="retro-list"></ul>
+        <div id="chat-column">
+            <div id="chatBox"></div>
+            <div id="guessFeedback" style="height: 20px; font-weight: bold; margin-bottom: 5px;"></div>
+            <div id="inputRow">
+                <input type="text" id="guessInput" placeholder="ENTER GUESS..." autocomplete="off">
+                <button id="submitGuessBtn">SEND</button>
             </div>
         </div>
 
-        <div class="screen hidden" id="resultsScreen">
-            <h2>🏆 GAME OVER 🏆</h2>
-            <div id="podium" class="podium-container"></div>
-            <div id="runnerUps" style="text-align: left; margin-top: 30px;">
-                <h3>RANKINGS</h3>
-                <ul id="runnerUpList" class="retro-list"></ul>
-            </div>
-            <button id="playAgainBtn" class="host-btn" style="margin-top: 20px;">CONTINUE?</button>
-        </div>
-    </div>
-
-    <div id="bottomPanel" class="hidden">
-        <div id="chatBox"></div>
-        <div id="inputRow">
-            <input type="text" id="guessInput" placeholder="ENTER GUESS..." autocomplete="off">
-            <button id="submitGuessBtn">SEND</button>
-        </div>
-        <div id="guessFeedback" style="height: 20px; margin-top: 5px; font-weight: bold;"></div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    </div> <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io(); 
@@ -318,7 +405,7 @@
         
         socket.on('gameStarted', (data) => {
             showScreen('gameScreen');
-            document.getElementById('bottomPanel').classList.remove('hidden');
+            // Bottom Panel is now part of layout, always visible, no need to toggle hidden class
         });
 
         socket.on('chatMessage', (data) => {
@@ -355,11 +442,21 @@
             input.focus();
             document.getElementById('guessFeedback').textContent = '';
             document.getElementById('trackNum').textContent = data.trackIndex + 1;
+            
+            document.getElementById('hintText').textContent = data.hintMask;
+
             const audio = document.getElementById('gameAudio');
             audio.src = data.track.previewUrl;
             audio.volume = 0.5;
             audio.play().catch(e => console.log("Autoplay blocked"));
             document.getElementById('countdown').textContent = data.roundCountdown;
+        });
+
+        socket.on('revealHint', (data) => {
+            const el = document.getElementById('hintText');
+            const currentChars = el.textContent.split('');
+            currentChars[data.index] = data.char;
+            el.textContent = currentChars.join('');
         });
 
         socket.on('countdown', (t) => document.getElementById('countdown').textContent = t);
@@ -371,6 +468,9 @@
             document.getElementById('revealSubmitter').textContent = "CHOSEN BY: " + data.submitterName;
             document.getElementById('albumArt').src = data.track.albumArt || '';
             document.getElementById('gameAudio').pause();
+            
+            document.getElementById('hintText').textContent = "";
+            
             updateScores(data.scores, 'scoreList');
             const input = document.getElementById('guessInput');
             input.placeholder = "ROUND OVER. CHAT ENABLED.";
@@ -458,9 +558,11 @@
         document.getElementById('startGameBtn').onclick = () => socket.emit('startGame');
         document.getElementById('submitGuessBtn').onclick = () => { const guess = document.getElementById('guessInput').value; if(guess) socket.emit('submitGuess', guess); };
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
-        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
+        function showScreen(id) { 
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); 
+            document.getElementById(id).classList.remove('hidden'); 
+        }
         
-        // --- UPDATED LOBBY + CROWN ICON ---
         function updateLobby(data) {
             const count = data.submittedPlayers ? data.submittedPlayers.length : 0;
             document.getElementById('submittedCount').textContent = count; 
@@ -478,7 +580,6 @@
             Object.values(data.players).forEach(p => { 
                 const li = document.createElement('li'); 
                 
-                // ADDED CROWN ICON LOGIC HERE
                 const isThisPlayerHost = (p.id === data.hostId);
                 const crown = isThisPlayerHost ? ' 👑' : '';
 
