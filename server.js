@@ -45,6 +45,9 @@ let isRoundActive = false;
 let currentDisplayTitle = ""; 
 let currentHiddenIndices = []; 
 
+// --- TRACK DJ POINTS FOR THIS ROUND ---
+let currentDjPoints = 0; 
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
@@ -156,7 +159,6 @@ io.on('connection', (socket) => {
         const title = clean(currentTrack.trackName);
         const artist = clean(currentTrack.artistName);
 
-        // 1. Check if they already won
         if (roundWinners.has(socket.id)) {
             if (userGuess.includes(title) || title.includes(userGuess)) {
                  socket.emit('guessResult', { correct: true, points: 0, message: "Don't spoil it!" });
@@ -167,7 +169,6 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // 2. Check if it's the submitter (DJ)
         if (socket.id === currentTrack.submitterId) {
              if (userGuess.includes(title) || title.includes(userGuess)) {
                  socket.emit('guessResult', { correct: false, message: "Don't spoil your own song!" });
@@ -178,7 +179,6 @@ io.on('connection', (socket) => {
              return;
         }
 
-        // 3. ARTIST CHECK (Feedback only, no points)
         const isArtistMatch = (userGuess.length > 2 && artist.includes(userGuess)) || userGuess === artist;
         if (isArtistMatch) {
             socket.emit('guessResult', { correct: false, message: "That's the artist! Guess the title!" });
@@ -186,12 +186,9 @@ io.on('connection', (socket) => {
             return; 
         }
 
-        // 4. TITLE CHECK (Win Condition)
-        // Rule: Must be a match AND contain at least 50% of the characters
+        // --- WIN CONDITION: TITLE ONLY ---
         const isSignificantPart = (userGuess.length >= title.length * 0.5) && title.includes(userGuess);
         const isExactMatch = userGuess === title;
-        
-        // Fuzzy Match
         const titleDist = levenshtein(userGuess, title);
         const allowedTypos = Math.max(2, Math.floor(title.length * 0.4)); 
 
@@ -201,7 +198,13 @@ io.on('connection', (socket) => {
             let pointsEarned = Math.max(5, Math.ceil(30 - elapsedSeconds));
             
             players[socket.id].score += pointsEarned;
-            if(players[currentTrack.submitterId]) players[currentTrack.submitterId].score += 3;
+            
+            // --- DJ POINTS ---
+            if(players[currentTrack.submitterId]) {
+                const bonus = 3;
+                players[currentTrack.submitterId].score += bonus;
+                currentDjPoints += bonus; // Add to tally for chat announcement
+            }
 
             roundWinners.add(socket.id);
             socket.emit('guessResult', { correct: true, points: pointsEarned });
@@ -251,8 +254,8 @@ function startRound() {
     const track = gameQueue[currentRoundIndex];
     roundStartTime = Date.now();
     isRoundActive = true; 
+    currentDjPoints = 0; // RESET DJ POINTS FOR NEW ROUND
     
-    // --- PREPARE HINT MASK ---
     currentDisplayTitle = track.trackName.toUpperCase();
     currentHiddenIndices = [];
     
@@ -280,9 +283,6 @@ function startRound() {
         timeLeft--;
         io.emit('countdown', timeLeft);
         
-        // --- HINT LOGIC ---
-        // First 10s: Nothing.
-        // Last 20s: Reveal every 5s.
         if (timeLeft <= 20 && timeLeft % 5 === 0 && currentHiddenIndices.length > 0) {
             const indexToReveal = currentHiddenIndices.pop(); 
             const charToReveal = currentDisplayTitle[indexToReveal];
@@ -299,6 +299,20 @@ function startRound() {
 function endRound() {
     isRoundActive = false; 
     const track = gameQueue[currentRoundIndex];
+    
+    // --- ANNOUNCE DJ EARNINGS ---
+    if(currentDjPoints > 0) {
+        const djName = track.submitterName;
+        const djColor = players[track.submitterId] ? players[track.submitterId].color : '#fff';
+        
+        io.emit('chatMessage', { 
+            name: "SYSTEM", 
+            text: `DJ ${djName} earned +${currentDjPoints} PTS this round! 💰`, 
+            type: 'winner-chat', // Uses the yellow winner style
+            color: '#ffffff' 
+        });
+    }
+
     io.emit('roundEnded', {
         track: { title: track.trackName, artist: track.artistName, albumArt: track.albumArt },
         submitterName: track.submitterName,
