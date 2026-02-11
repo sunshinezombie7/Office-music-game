@@ -98,7 +98,6 @@
             width: 100%;
         }
         
-        /* NEW: INSTRUCTION BOX STYLE */
         .instruction-box {
             border: 2px dashed #666;
             background: #111;
@@ -117,7 +116,6 @@
             display: inline-block;
         }
         .instruction-step { margin-bottom: 5px; }
-        .highlight { color: #fff; font-weight: bold; }
         
         .hidden { display: none !important; }
 
@@ -154,7 +152,6 @@
 
         .song-item { background: #1a1a1a; padding: 10px; margin: 5px 0; cursor: pointer; border: 1px solid #333; text-align: left; }
         .song-item:hover { background: #222; border-color: #00ffff; }
-        .song-item.selected { border-left: 8px solid #ff00ff; background: #220022; }
 
         ul.retro-list li { 
             background: #000; 
@@ -182,9 +179,6 @@
             line-height: 1.2;
         }
 
-        .guess-correct { color: #00ff00; font-weight: bold; margin: 5px 0; font-size: 1.1rem; text-transform: uppercase; }
-        .guess-incorrect { color: #ff3333; font-weight: bold; margin: 5px 0; text-transform: uppercase; }
-        
         #chatBox { 
             width: 100%; 
             height: 100px; 
@@ -220,9 +214,7 @@
         .silver { background: #00ffff; height: 160px; order: 1; box-shadow: 0 0 20px #00ffff; border-color: #00ffff; }
         .bronze { background: #ff00ff; height: 110px; order: 3; box-shadow: 0 0 20px #ff00ff; border-color: #ff00ff; }
         
-        #activeSubmitter { font-style: italic; color: #ff00ff; margin-bottom: 10px; }
         .status-message { color: #ff3333; margin-top: 10px; font-weight: bold; display: none; }
-
         .color-options { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
         .color-dot { width: 30px; height: 30px; border: 2px solid #000; cursor: pointer; transition: transform 0.2s; } 
         .color-dot:hover { transform: scale(1.2); border-color: #fff; }
@@ -232,13 +224,11 @@
 </head>
 <body>
     <div id="main-layout">
-        
         <div id="game-column">
             <div class="container">
                 <h1>NOT SONGLIO</h1>
                 
                 <div class="screen" id="loginScreen">
-                    
                     <div class="instruction-box">
                         <h3>HOW TO PLAY</h3>
                         <div class="instruction-step">1. <span style="color:#00ffff">JOIN:</span> Enter Name & Pick Color.</div>
@@ -257,8 +247,8 @@
                 </div>
 
                 <div class="screen hidden" id="lobbyScreen">
-                    <h2>LOBBY - WAITING FOR PLAYERS</h2>
-                    <p style="color:#ffff00; font-size:0.9rem; margin-bottom:10px;">WAITING FOR HOST TO START SELECTION...</p>
+                    <h2 id="lobbyHeader">LOBBY - WAITING FOR PLAYERS</h2>
+                    <p id="lobbyStatus" style="color:#ffff00; font-size:0.9rem; margin-bottom:10px;">WAITING FOR HOST TO START SELECTION...</p>
                     <p>PLAYERS: <span id="lobbyCount">0</span></p>
                     <ul id="lobbyList" class="retro-list"></ul>
                     <br>
@@ -299,6 +289,8 @@
                     
                     <div id="countdown">30</div>
                     <audio id="gameAudio" style="display:none"></audio>
+
+                    <button id="skipBtn" class="danger-btn hidden" style="display:block; margin: 10px auto;">SKIP ROUND ⏭️</button>
                     
                     <div id="revealArea" class="hidden">
                         <img id="albumArt" src="" style="width:150px; border: 2px solid #fff;">
@@ -333,7 +325,6 @@
                 <button id="submitGuessBtn">SEND</button>
             </div>
         </div>
-
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -343,12 +334,11 @@
         let myId = null;
         let selectedTrack = null;
         let myColor = '#00ffff'; 
+        let currentHostId = null;
 
         const colors = ['#ff00ff', '#00ffff', '#ffff00', '#00ff00', '#ff9900', '#bd00ff', '#ff3333', '#ffffff'];
-        
         const picker = document.getElementById('colorPicker');
         if (picker) {
-            picker.innerHTML = ''; 
             colors.forEach(c => {
                 const dot = document.createElement('div');
                 dot.className = 'color-dot';
@@ -367,19 +357,22 @@
         }
 
         socket.on('connect', () => { myId = socket.id; });
+
+        // FIX: Game State Sync for reconnects/refreshes
+        socket.on('gameStateSync', (data) => {
+            if (data.phase !== 'lobby') {
+                showScreen(data.phase === 'selection' ? 'submissionScreen' : 'gameScreen');
+                if (data.phase === 'playing') document.getElementById('trackNum').textContent = data.currentRound + 1;
+            }
+        });
         
         socket.on('playerJoined', (data) => {
+            currentHostId = data.hostId;
             updateLobby(data);
             
             if (document.getElementById('loginScreen').classList.contains('hidden') === false) {
                 if (data.players[myId]) {
-                    if (data.phase === 'lobby') {
-                        showScreen('lobbyScreen');
-                    } else if (data.phase === 'selection') {
-                        showScreen('submissionScreen');
-                    } else if (data.phase === 'playing') {
-                        showScreen('gameScreen'); 
-                    }
+                    if (data.phase === 'lobby') showScreen('lobbyScreen');
                 }
             }
 
@@ -389,11 +382,13 @@
             }
         });
 
-        socket.on('selectionStarted', () => {
-             showScreen('submissionScreen');
+        socket.on('selectionStarted', () => { showScreen('submissionScreen'); });
+        socket.on('loginError', (msg) => { 
+            const el = document.getElementById('loginStatus'); 
+            el.textContent = msg; 
+            el.style.display = 'block'; 
+            setTimeout(() => el.style.display = 'none', 3000); 
         });
-
-        socket.on('loginError', (msg) => { const el = document.getElementById('loginStatus'); el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000); });
         
         socket.on('searchResults', (results) => {
             const container = document.getElementById('searchResults');
@@ -419,50 +414,39 @@
             if(data.isReady) document.getElementById('startGameBtn').disabled = false;
         });
         
-        socket.on('gameStarted', (data) => {
-            showScreen('gameScreen');
-        });
+        socket.on('gameStarted', (data) => { showScreen('gameScreen'); });
 
         socket.on('chatMessage', (data) => {
             const chatBox = document.getElementById('chatBox');
             const div = document.createElement('div');
             div.className = 'chat-msg';
             const nameSpan = `<span class="chat-name" style="color: ${data.color || '#00ffff'}">${data.name}:</span>`;
-            if(data.type === 'correct') {
-                div.innerHTML = `${nameSpan} <span class="chat-correct">${data.text}</span>`;
-            } else if (data.type === 'winner-chat') {
-                div.innerHTML = `${nameSpan} <span class="chat-winner">${data.text}</span>`;
-            } else if (data.type === 'dj-chat') {
-                div.innerHTML = `${nameSpan} <span class="chat-dj">${data.text}</span>`;
-            } else {
-                div.innerHTML = `${nameSpan} <span class="chat-wrong">${data.text}</span>`;
-            }
+            if(data.type === 'correct') div.innerHTML = `${nameSpan} <span class="chat-correct">${data.text}</span>`;
+            else if (data.type === 'winner-chat') div.innerHTML = `${nameSpan} <span class="chat-winner">${data.text}</span>`;
+            else if (data.type === 'dj-chat') div.innerHTML = `${nameSpan} <span class="chat-dj">${data.text}</span>`;
+            else div.innerHTML = `${nameSpan} <span class="chat-wrong">${data.text}</span>`;
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
         });
 
         socket.on('playTrack', (data) => {
             document.getElementById('revealArea').classList.add('hidden');
-            const chatBox = document.getElementById('chatBox');
-            const separator = document.createElement('div');
-            separator.style.cssText = "text-align: center; opacity: 0.5; margin: 10px 0; font-size: 0.8rem; border-top: 1px solid #333; padding-top: 5px; color: #ff00ff;";
-            separator.textContent = `--- ROUND ${data.trackIndex + 1} ---`;
-            chatBox.appendChild(separator);
-            document.getElementById('activeSubmitter').textContent = "DJ: " + data.submitterName;
-            const input = document.getElementById('guessInput');
-            input.value = '';
-            input.disabled = false;
-            input.classList.remove('input-winner');
-            input.placeholder = "ENTER GUESS...";
-            input.focus();
-            document.getElementById('guessFeedback').textContent = '';
             document.getElementById('trackNum').textContent = data.trackIndex + 1;
-            
             document.getElementById('hintText').textContent = data.hintMask;
+            document.getElementById('activeSubmitter').textContent = "DJ: " + data.submitterName;
+            
+            // FIX: Show Skip button only to host
+            const skipBtn = document.getElementById('skipBtn');
+            if (myId === currentHostId) skipBtn.classList.remove('hidden');
+            else skipBtn.classList.add('hidden');
 
+            const input = document.getElementById('guessInput');
+            input.value = ''; input.disabled = false; input.classList.remove('input-winner');
+            input.placeholder = "ENTER GUESS..."; input.focus();
+            
+            document.getElementById('guessFeedback').textContent = '';
             const audio = document.getElementById('gameAudio');
-            audio.src = data.track.previewUrl;
-            audio.volume = 0.5;
+            audio.src = data.track.previewUrl; audio.volume = 0.5;
             audio.play().catch(e => console.log("Autoplay blocked"));
             document.getElementById('countdown').textContent = data.roundCountdown;
         });
@@ -474,7 +458,11 @@
             el.textContent = currentChars.join('');
         });
 
-        socket.on('countdown', (t) => document.getElementById('countdown').textContent = t);
+        socket.on('countdown', (t) => {
+            document.getElementById('countdown').textContent = t;
+            // QoL: Visual Progress Bar update
+            document.getElementById('gameProgress').style.width = (t / 30 * 100) + "%";
+        });
         
         socket.on('roundEnded', (data) => {
             document.getElementById('revealArea').classList.remove('hidden');
@@ -483,37 +471,32 @@
             document.getElementById('revealSubmitter').textContent = "CHOSEN BY: " + data.submitterName;
             document.getElementById('albumArt').src = data.track.albumArt || '';
             document.getElementById('gameAudio').pause();
-            
             document.getElementById('hintText').textContent = "";
+            document.getElementById('skipBtn').classList.add('hidden');
             
             updateScores(data.scores, 'scoreList');
-            const input = document.getElementById('guessInput');
-            input.placeholder = "ROUND OVER. CHAT ENABLED.";
+            document.getElementById('guessInput').placeholder = "ROUND OVER. CHAT ENABLED.";
         });
 
         socket.on('guessResult', (data) => {
             const fb = document.getElementById('guessFeedback');
             const input = document.getElementById('guessInput');
-            if(data.silent) { input.value = ''; input.focus(); return; }
+            if(data.silent) { input.value = ''; return; }
             if(data.correct) {
                 fb.textContent = `✅ CORRECT! +${data.points}`;
                 fb.className = "guess-correct";
                 input.classList.add('input-winner');
-                input.placeholder = "CHAT MODE ACTIVATED...";
+                input.placeholder = "CHAT MODE...";
                 input.value = '';
-                input.focus();
             } else {
                 fb.textContent = data.message ? "⚠️ " + data.message : "❌ INCORRECT";
                 fb.className = "guess-incorrect";
                 input.value = ''; 
-                input.disabled = false;
-                input.focus();
             }
         });
 
         socket.on('gameFinished', (data) => {
             showScreen('resultsScreen');
-            
             const duration = 3000;
             const end = Date.now() + duration;
             (function frame() {
@@ -524,16 +507,15 @@
 
             const podium = document.getElementById('podium');
             const runnerList = document.getElementById('runnerUpList');
-            podium.innerHTML = '';
-            runnerList.innerHTML = '';
+            podium.innerHTML = ''; runnerList.innerHTML = '';
             const allPlayers = Object.values(data.scores).sort((a,b) => b.score - a.score);
             const top3 = allPlayers.slice(0, 3);
             
-            const createPillar = (player, rankClass, rankNum) => {
-                if(!player) return;
+            const createPillar = (p, rankClass, rankNum) => {
+                if(!p) return;
                 const div = document.createElement('div');
                 div.className = `pillar ${rankClass}`;
-                div.innerHTML = `<div class="pillar-name" style="color:${player.color}">${player.name}</div><div class="rank-label">${rankNum}</div><div class="pillar-score">${player.score}</div>`;
+                div.innerHTML = `<div class="pillar-name" style="color:${p.color}">${p.name}</div><div class="rank-label">${rankNum}</div><div class="pillar-score">${p.score}</div>`;
                 podium.appendChild(div);
             };
             createPillar(top3[1], 'silver', '2ND');
@@ -541,19 +523,22 @@
             createPillar(top3[2], 'bronze', '3RD');
             
             const rest = allPlayers.slice(3);
-            if(rest.length === 0) { document.getElementById('runnerUps').classList.add('hidden'); } 
-            else { document.getElementById('runnerUps').classList.remove('hidden'); rest.forEach((p, index) => { 
-                const li = document.createElement('li'); 
-                li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>#${index + 4} ${p.name}</span> <span>${p.score} PTS</span>`; 
-                runnerList.appendChild(li); 
-            }); }
+            if(rest.length === 0) document.getElementById('runnerUps').classList.add('hidden');
+            else {
+                document.getElementById('runnerUps').classList.remove('hidden');
+                rest.forEach((p, i) => { 
+                    const li = document.createElement('li'); 
+                    li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>#${i + 4} ${p.name}</span> <span>${p.score} PTS</span>`; 
+                    runnerList.appendChild(li); 
+                });
+            }
         });
         
         socket.on('playAgainStarted', () => location.reload());
 
         function addEnterKey(inputId, btnId) {
             const input = document.getElementById(inputId);
-            if(input) { input.addEventListener("keypress", function(event) { if (event.key === "Enter") { event.preventDefault(); document.getElementById(btnId).click(); } }); }
+            if(input) { input.addEventListener("keypress", (e) => { if (e.key === "Enter") { e.preventDefault(); document.getElementById(btnId).click(); } }); }
         }
         addEnterKey("playerName", "joinBtn");
         addEnterKey("searchInput", "searchBtn");
@@ -561,59 +546,69 @@
         
         document.getElementById('joinBtn').onclick = () => { 
             const name = document.getElementById('playerName').value; 
-            if(name) { socket.emit('joinGame', { name: name, color: myColor }); } 
+            if(name) socket.emit('joinGame', { name: name, color: myColor }); 
         };
         
+        // FIX: Host Selection Confirmation
         document.getElementById('openSelectionBtn').onclick = () => {
-            socket.emit('openSongSelection');
+            if(confirm("LOCKED LOBBY: No new players can join once selection starts. Proceed?")) {
+                socket.emit('openSongSelection');
+            }
         };
 
-        document.getElementById('searchBtn').onclick = () => { const query = document.getElementById('searchInput').value; if(query) socket.emit('searchSongs', query); };
-        document.getElementById('submitSongBtn').onclick = () => { if(selectedTrack) { socket.emit('submitSong', selectedTrack); document.getElementById('selectedSong').innerHTML = "<h3>TRACK CONFIRMED</h3>"; document.getElementById('searchResults').classList.add('hidden'); document.getElementById('waitingArea').classList.remove('hidden'); } };
+        document.getElementById('searchBtn').onclick = () => { const q = document.getElementById('searchInput').value; if(q) socket.emit('searchSongs', q); };
+        document.getElementById('submitSongBtn').onclick = () => { 
+            if(selectedTrack) { 
+                socket.emit('submitSong', selectedTrack); 
+                document.getElementById('selectedSong').innerHTML = "<h3>TRACK CONFIRMED</h3>"; 
+                document.getElementById('searchResults').classList.add('hidden'); 
+                document.getElementById('waitingArea').classList.remove('hidden'); 
+            } 
+        };
         document.getElementById('startGameBtn').onclick = () => socket.emit('startGame');
-        document.getElementById('submitGuessBtn').onclick = () => { const guess = document.getElementById('guessInput').value; if(guess) socket.emit('submitGuess', guess); };
+        document.getElementById('submitGuessBtn').onclick = () => { const g = document.getElementById('guessInput').value; if(g) socket.emit('submitGuess', g); };
         document.getElementById('playAgainBtn').onclick = () => socket.emit('playAgain');
+        
+        // FIX: Host Skip listener
+        document.getElementById('skipBtn').onclick = () => { if(confirm("Skip this track?")) socket.emit('skipRound'); };
+
         function showScreen(id) { 
             document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); 
             document.getElementById(id).classList.remove('hidden'); 
         }
         
         function updateLobby(data) {
-            const count = data.submittedPlayers ? data.submittedPlayers.length : 0;
-            document.getElementById('submittedCount').textContent = count; 
+            document.getElementById('submittedCount').textContent = data.submittedPlayers ? data.submittedPlayers.length : 0; 
             const total = Object.keys(data.players).length;
             document.getElementById('totalPlayers').textContent = total; 
             document.getElementById('lobbyCount').textContent = total;
 
+            // FIX: Lobby Visual Lock
+            const header = document.getElementById('lobbyHeader');
+            if (data.phase !== 'lobby') header.innerHTML = "LOBBY - <span style='color:#ff3333'>LOCKED</span>";
+
             const lobbyList = document.getElementById('lobbyList'); 
-            const submissionList = document.getElementById('submissionList');
-            lobbyList.innerHTML = ''; 
-            submissionList.innerHTML = '';
+            const subList = document.getElementById('submissionList');
+            lobbyList.innerHTML = ''; subList.innerHTML = '';
             
             const amIHost = (myId === data.hostId);
-
             Object.values(data.players).forEach(p => { 
                 const li = document.createElement('li'); 
-                
-                const isThisPlayerHost = (p.id === data.hostId);
-                const crown = isThisPlayerHost ? ' 👑' : '';
-
+                const crown = (p.id === data.hostId) ? ' 👑' : '';
                 let html = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}${crown}</span>`;
                 
-                if (amIHost && p.id !== myId) {
-                    html += `<div style="display:flex; align-items:center; gap:10px;">${p.hasSubmitted ? '✅' : '⏳'}<button class="danger-btn" onclick="kickPlayer('${p.id}')">❌</button></div>`;
-                } else {
-                    html += `${p.hasSubmitted ? '✅' : '⏳'}`;
-                }
+                if (amIHost && p.id !== myId) html += `<div>${p.hasSubmitted ? '✅' : '⏳'}<button class="danger-btn" onclick="kickPlayer('${p.id}')">❌</button></div>`;
+                else html += `${p.hasSubmitted ? '✅' : '⏳'}`;
                 
                 li.innerHTML = html;
                 lobbyList.appendChild(li.cloneNode(true)); 
-                submissionList.appendChild(li);            
+                subList.appendChild(li);            
             }); 
         }
         
         function updateScores(scores, listId) { 
-            const list = document.getElementById(listId); list.innerHTML = ''; const sorted = Object.values(scores).sort((a,b) => b.score - a.score); 
+            const list = document.getElementById(listId); list.innerHTML = ''; 
+            const sorted = Object.values(scores).sort((a,b) => b.score - a.score); 
             sorted.forEach(p => { 
                 const li = document.createElement('li'); 
                 li.innerHTML = `<span><span class="player-dot" style="background:${p.color}"></span>${p.name}</span> <span>${p.score} PTS</span>`; 
@@ -621,11 +616,7 @@
             }); 
         }
 
-        window.kickPlayer = function(id) {
-            if(confirm("EJECT PLAYER?")) {
-                socket.emit('kickPlayer', id);
-            }
-        };
+        window.kickPlayer = (id) => { if(confirm("EJECT PLAYER?")) socket.emit('kickPlayer', id); };
     </script>
 </body>
 </html>
