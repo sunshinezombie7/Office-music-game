@@ -48,10 +48,26 @@ let currentHiddenIndices = [];
 // --- TRACK DJ POINTS FOR THIS ROUND ---
 let currentDjPoints = 0; 
 
+// FIX 2: IMPROVED CLEAN FUNCTION (Removes (Remastered), - Deluxe, etc.)
+const clean = (str) => {
+    return (str || "")
+        .toLowerCase()
+        .replace(/\(.*\)|\[.*\]/g, "") // Removes anything in () or []
+        .replace(/-.*/g, "")          // Removes anything after a dash
+        .replace(/[^\w\s]/gi, '')     // Removes special chars
+        .trim();
+};
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
     socket.on('joinGame', (data) => {
+        // FIX 1: LOBBY LOCK - Prevent joining if selection or game started
+        if (gamePhase !== 'lobby') {
+            socket.emit('loginError', "Game already in progress! Wait for the next lobby.");
+            return;
+        }
+
         let nameInput = data.name || "";
         let colorInput = data.color || "#3498db";
         const cleanName = nameInput.trim();
@@ -69,6 +85,13 @@ io.on('connection', (socket) => {
             score: 0,
             hasSubmitted: false
         };
+
+        // FIX 1.5: GAME STATE SYNC - Tells the player exactly what phase the game is in
+        socket.emit('gameStateSync', {
+            phase: gamePhase,
+            currentRound: currentRoundIndex,
+            totalTracks: gameQueue.length
+        });
         
         io.emit('playerJoined', {
             players: players,
@@ -83,6 +106,16 @@ io.on('connection', (socket) => {
         if (socket.id !== hostId) return;
         gamePhase = 'selection';
         io.emit('selectionStarted');
+    });
+
+    // FIX 3: HOST SKIP ROUND
+    socket.on('skipRound', () => {
+        const hostId = Object.keys(players)[0];
+        if (socket.id === hostId && isRoundActive) {
+            clearInterval(roundTimer);
+            io.emit('chatMessage', { name: "SYSTEM", text: "Host skipped the round.", type: 'wrong', color: '#ff3333' });
+            endRound();
+        }
     });
 
     socket.on('kickPlayer', (targetId) => {
@@ -154,7 +187,6 @@ io.on('connection', (socket) => {
         }
 
         const currentTrack = gameQueue[currentRoundIndex];
-        const clean = (str) => (str || "").toLowerCase().replace(/[^\w\s]/gi, '').trim();
         const userGuess = clean(guess);
         const title = clean(currentTrack.trackName);
         const artist = clean(currentTrack.artistName);
@@ -190,7 +222,7 @@ io.on('connection', (socket) => {
         const isSignificantPart = (userGuess.length >= title.length * 0.5) && title.includes(userGuess);
         const isExactMatch = userGuess === title;
         const titleDist = levenshtein(userGuess, title);
-        const allowedTypos = Math.max(2, Math.floor(title.length * 0.4)); 
+        const allowedTypos = Math.max(1, Math.floor(title.length * 0.2)); 
 
         if (isSignificantPart || isExactMatch || titleDist <= allowedTypos) {
             const now = Date.now();
@@ -199,11 +231,10 @@ io.on('connection', (socket) => {
             
             players[socket.id].score += pointsEarned;
             
-            // --- DJ POINTS ---
             if(players[currentTrack.submitterId]) {
                 const bonus = 3;
                 players[currentTrack.submitterId].score += bonus;
-                currentDjPoints += bonus; // Add to tally for chat announcement
+                currentDjPoints += bonus;
             }
 
             roundWinners.add(socket.id);
@@ -254,7 +285,7 @@ function startRound() {
     const track = gameQueue[currentRoundIndex];
     roundStartTime = Date.now();
     isRoundActive = true; 
-    currentDjPoints = 0; // RESET DJ POINTS FOR NEW ROUND
+    currentDjPoints = 0;
     
     currentDisplayTitle = track.trackName.toUpperCase();
     currentHiddenIndices = [];
@@ -300,15 +331,12 @@ function endRound() {
     isRoundActive = false; 
     const track = gameQueue[currentRoundIndex];
     
-    // --- ANNOUNCE DJ EARNINGS ---
     if(currentDjPoints > 0) {
         const djName = track.submitterName;
-        const djColor = players[track.submitterId] ? players[track.submitterId].color : '#fff';
-        
         io.emit('chatMessage', { 
             name: "SYSTEM", 
             text: `DJ ${djName} earned +${currentDjPoints} PTS this round! 💰`, 
-            type: 'winner-chat', // Uses the yellow winner style
+            type: 'winner-chat', 
             color: '#ffffff' 
         });
     }
